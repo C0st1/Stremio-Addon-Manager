@@ -596,12 +596,11 @@ body {
 
   <div class="auth-section">
     <div class="auth-indicator" id="authIndicator" title="Connection status"></div>
-    <div style="display: flex; flex-direction: column; flex: 1; gap: 4px;">
+    <div style="display: flex; flex-direction: column; flex: 1; gap: 6px;">
       <label for="authKeyInput">Stremio Auth Key</label>
       <input type="password" id="authKeyInput" placeholder="Paste your Stremio auth key here…" autocomplete="off" />
-      <span style="font-size: 0.7rem; color: var(--text-dim);">
-        <strong>How to find it:</strong> Open Stremio Desktop → Settings → Account → Scroll down to "Auth Key". 
-        (Your key is securely saved in your browser's local storage).
+      <span style="font-size: 0.75rem; color: var(--text-dim); line-height: 1.4;">
+        <strong>How to get your key:</strong> Open Stremio (Web), press <code>F12</code> to open Developer Tools, go to the <strong>Console</strong> tab, paste <code style="background: var(--bg-deep); border: 1px solid var(--border); padding: 2px 5px; border-radius: 4px; color: var(--accent-hi); user-select: all; cursor: pointer;" title="Click to select all">console.log(JSON.parse(localStorage.getItem('profile')).auth.key)</code> and press Enter. (Your key is securely saved in your browser).
       </span>
     </div>
   </div>
