@@ -18,7 +18,6 @@ This addon solves that — instantly.
 |---|---|
 | Login with Stremio Account (Email/Password) | ✅ |
 | Drag-and-drop reordering | ✅ |
-| Move Up / Move Down buttons (keyboard/mobile) | ✅ |
 | Pin addons to the top | ✅ |
 | Remove addons (protected for core addons) | ✅ |
 | Copy Addon Manifest URL | ✅ |
