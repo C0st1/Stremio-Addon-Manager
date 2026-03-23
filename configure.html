@@ -604,7 +604,6 @@ body {
       <p>Reorder, organize, and manage your Stremio addons</p>
     </div>
     <div class="header-actions">
-      <button class="btn btn-ghost" id="btnUndo" title="Undo (Ctrl+Z)" disabled>↩ Undo</button>
       <button class="btn btn-ghost" id="btnBackup" title="Backup / Restore">📦 Backup</button>
       <button class="btn btn-ghost" id="btnRefresh" title="Reload addons from Stremio">↻ Refresh</button>
     </div>
@@ -726,42 +725,10 @@ let addons      = [];
 let original    = [];        
 let pinned      = new Set(); 
 let groupMode   = 'none';    
-let sortable    = null;
-let historyStack =[];
-      
+let sortable    = null;      
+
 const $ = id => document.getElementById(id);
 const addonList = $('addonList');
-
-// ─── Undo System ──────────────────────────────────────────────────
-function pushHistory() {
-  // Keep the last 50 actions to prevent memory bloat
-  if (historyStack.length > 50) historyStack.shift();
-  
-  historyStack.push({
-    addons: JSON.parse(JSON.stringify(addons)), // Deep copy of addons
-    pinned: new Set(pinned)                     // Copy of pinned set
-  });
-  
-  updateUndoButton();
-}
-
-function undo() {
-  if (historyStack.length === 0) return;
-  
-  const prevState = historyStack.pop();
-  addons = prevState.addons;
-  pinned = prevState.pinned;
-  
-  renderList();
-  markChanged();
-  updateUndoButton();
-  toast('Undo successful', 'info');
-}
-
-function updateUndoButton() {
-  const btn = $('btnUndo');
-  if (btn) btn.disabled = historyStack.length === 0;
-}
 
 // ─── LocalStorage & Auto-Refresh for Auth Key ─────────────────────
 const savedKey = localStorage.getItem('stremioAuthKey');
@@ -881,20 +848,6 @@ $('searchInput').addEventListener('input', () => applyFilter());
 // ─── Refresh ─────────────────────────────────────────────────────
 $('btnRefresh').addEventListener('click', loadAddons);
 
-// ─── Undo Listeners ───
-$('btnUndo').addEventListener('click', undo);
-
-// Support Ctrl+Z / Cmd+Z keys
-document.addEventListener('keydown', e => {
-  // If user is typing in search or email, don't trigger undo
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-  if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-    e.preventDefault();
-    undo();
-  }
-});
-
 // ─── Backup ───────────────────────────────────────────────────────
 $('btnBackup').addEventListener('click', openBackupModal);
 
@@ -903,8 +856,6 @@ $('btnSave').addEventListener('click', saveAddons);
 $('btnDiscard').addEventListener('click', () => {
   addons = JSON.parse(JSON.stringify(original));
   pinned.clear();
-  historyStack = [];    // Clear the undo history
-  updateUndoButton();   // Disable the button
   renderList();
   hideSaveBar();
   toast('Changes discarded', 'warning');
@@ -934,9 +885,6 @@ async function loadAddons() {
 
     addons   = data.addons || [];
     original = JSON.parse(JSON.stringify(addons));
-    
-    historyStack = [];    // Clear history on fresh load
-    updateUndoButton();   // Disable the button
 
     $('authIndicator').classList.add('connected');
     renderList();
@@ -1111,9 +1059,8 @@ function initSortable(container) {
 }
 
 function syncOrderFromDOM() {
-  pushHistory();
   const cards = addonList.querySelectorAll('.addon-card');
-  const urlToAddon = Object.fromEntries(addons.map(a =>[a.transportUrl || a.manifest?.transportUrl, a]));
+  const urlToAddon = Object.fromEntries(addons.map(a => [a.transportUrl || a.manifest?.transportUrl, a]));
   const newOrder = [];
   cards.forEach(card => { const a = urlToAddon[card.dataset.url]; if (a) newOrder.push(a); });
   addons.forEach(a => { if (!newOrder.includes(a)) newOrder.push(a); });
@@ -1122,7 +1069,6 @@ function syncOrderFromDOM() {
 }
 
 function togglePin(url) {
-  pushHistory();
   if (pinned.has(url)) { pinned.delete(url); } 
   else {
     pinned.add(url);
@@ -1137,7 +1083,6 @@ function confirmRemove(url, name) {
 }
 
 function removeAddon(url) {
-  pushHistory();
   addons = addons.filter(a => (a.transportUrl || a.manifest?.transportUrl) !== url);
   renderList(); markChanged();
   toast(`Addon removed`, 'warning');
@@ -1161,8 +1106,6 @@ async function saveAddons() {
 
     original = JSON.parse(JSON.stringify(addons));
     hideSaveBar();
-    historyStack = [];
-    updateUndoButton();
     toast('✓ Addon order saved!', 'success');
   } catch (err) {
     toast(`Save failed: ${err.message}`, 'error');
