@@ -113,7 +113,6 @@ http://localhost:7000/manifest.json
 
 ### 🔄 Reordering
 Drag the ⠿ handle to reorder addons.  
-Use ▲ / ▼ buttons for mobile or keyboard navigation.
 
 ### 📌 Pinning
 Pin addons to keep them at the top regardless of drag operations.
