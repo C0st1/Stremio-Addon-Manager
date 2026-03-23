@@ -10,7 +10,6 @@
 const stremioAPI = require('../../lib/stremioAPI');
 
 module.exports = async (req, res) => {
-  // Handle CORS pre-flight
   res.setHeader('Access-Control-Allow-Origin',  '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -21,23 +20,12 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const { authKey = '', source = 'cloud' } = req.body || {};
-
-  // On Vercel we cannot reach the local Stremio server
-  if (source === 'local') {
-    res.status(400).json({
-      ok:    false,
-      error: 'Local mode is not available on the hosted (Vercel) version. ' +
-             'Please enter your Stremio auth key and use Cloud mode.',
-    });
-    return;
-  }
+  const { authKey = '' } = req.body || {};
 
   if (!authKey) {
     res.status(400).json({
       ok:    false,
-      error: 'An auth key is required. Find it in Stremio → Settings → Account, ' +
-             'or in server-settings.json on your machine.',
+      error: 'An auth key is required. Find it in Stremio → Settings → Account.',
     });
     return;
   }
