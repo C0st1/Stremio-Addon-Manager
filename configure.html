@@ -877,7 +877,13 @@ function buildCard(addon, idx) {
   const res     = man.resources || [];
 
   const isPinned   = pinned.has(url);
-  const isSelf     = (man.id === 'community.addon-manager');
+
+  // Protect Addon Manager, Cinemeta, and Local Files from deletion
+  const protectedIds = ['community.addon-manager', 'official.cinemeta', 'local', 'org.stremio.local'];
+  const isProtected = protectedIds.includes(man.id);
+  
+  // Check if the addon has a configuration page
+  const isConfigurable = man.behaviorHints?.configurable === true;
 
   const card = document.createElement('div');
   card.className = 'addon-card' + (isPinned ? ' pinned-addon' : '');
@@ -909,13 +915,43 @@ function buildCard(addon, idx) {
         <button class="btn-icon move-down" title="Move down" data-url="${escHtml(url)}">▼</button>
       </div>
       <button class="btn-icon pin ${isPinned ? 'pinned' : ''}" title="${isPinned ? 'Unpin' : 'Pin to top'}" data-url="${escHtml(url)}">📌</button>
-      ${isSelf ? '' : `<button class="btn-icon danger remove" title="Remove addon" data-url="${escHtml(url)}" data-name="${escHtml(name)}">🗑</button>`}
+      
+      <button class="btn-icon copy-url" title="Copy manifest URL" data-url="${escHtml(url)}">🔗</button>
+      ${isConfigurable ? `<button class="btn-icon config-addon" title="Configure addon" data-url="${escHtml(url)}">⚙️</button>` : ''}
+      
+      ${isProtected ? '' : `<button class="btn-icon danger remove" title="Remove addon" data-url="${escHtml(url)}" data-name="${escHtml(name)}">🗑</button>`}
     </div>`;
 
+  // Standard movement & pinning listeners
   card.querySelector('.move-up').addEventListener('click', e => { e.stopPropagation(); moveAddon(url, -1); });
   card.querySelector('.move-down').addEventListener('click', e => { e.stopPropagation(); moveAddon(url, 1); });
   card.querySelector('.pin').addEventListener('click', e => { e.stopPropagation(); togglePin(url); });
-  if (!isSelf) card.querySelector('.remove').addEventListener('click', e => { e.stopPropagation(); confirmRemove(url, name); });
+  
+  // New Copy URL listener
+  card.querySelector('.copy-url').addEventListener('click', e => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(url)
+      .then(() => toast('Manifest URL copied!', 'success'))
+      .catch(() => toast('Copy failed', 'error'));
+  });
+
+  // New Configure listener (only bound if the addon is configurable)
+  if (isConfigurable) {
+    card.querySelector('.config-addon').addEventListener('click', e => {
+      e.stopPropagation();
+      // Standard Stremio convention: swap /manifest.json for /configure
+      const configUrl = url.replace(/\/manifest\.json$/i, '/configure');
+      window.open(configUrl, '_blank');
+    });
+  }
+
+  // Remove listener (only bound if not protected)
+  if (!isProtected) {
+    card.querySelector('.remove').addEventListener('click', e => { 
+      e.stopPropagation(); 
+      confirmRemove(url, name); 
+    });
+  }
 
   return card;
 }
