@@ -9,7 +9,6 @@
 const stremioAPI = require('../../lib/stremioAPI');
 
 module.exports = async (req, res) => {
-  // Handle CORS pre-flight
   res.setHeader('Access-Control-Allow-Origin',  '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -20,26 +19,17 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const { authKey = '', addons, source = 'cloud' } = req.body || {};
+  const { authKey = '', addons } = req.body || {};
 
   if (!Array.isArray(addons)) {
     res.status(400).json({ ok: false, error: '"addons" must be an array' });
     return;
   }
 
-  if (source === 'local') {
-    res.status(400).json({
-      ok:    false,
-      error: 'Local mode is not available on the hosted (Vercel) version. ' +
-             'Please use Cloud mode with your auth key.',
-    });
-    return;
-  }
-
   if (!authKey) {
     res.status(400).json({
       ok:    false,
-      error: 'An auth key is required to save via the cloud API.',
+      error: 'An auth key is required to save your addons.',
     });
     return;
   }
