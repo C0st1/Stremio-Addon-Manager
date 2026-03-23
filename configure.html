@@ -687,12 +687,29 @@ let sortable    = null;
 const $ = id => document.getElementById(id);
 const addonList = $('addonList');
 
-// ─── LocalStorage for Auth Key ────────────────────────────────────
+// ─── LocalStorage & Auto-Refresh for Auth Key ─────────────────────
 const savedKey = localStorage.getItem('stremioAuthKey');
 if (savedKey) $('authKeyInput').value = savedKey;
 
+let authKeyTimeout;
 $('authKeyInput').addEventListener('input', (e) => {
-  localStorage.setItem('stremioAuthKey', e.target.value.trim());
+  const val = e.target.value.trim();
+  localStorage.setItem('stremioAuthKey', val);
+  
+  // Clear the previous timer
+  clearTimeout(authKeyTimeout);
+  
+  // If the input looks like a valid auth key (usually 40+ characters), auto-load
+  if (val.length > 20) {
+    authKeyTimeout = setTimeout(() => {
+      loadAddons();
+    }, 600); // Wait 600ms after they finish pasting/typing to prevent spamming
+  } else if (val.length === 0) {
+    // Optional: Clear the list if they delete the key
+    addons = [];
+    renderList();
+    $('authIndicator').classList.remove('connected');
+  }
 });
 
 // ─── Group selector ───────────────────────────────────────────────
