@@ -6,6 +6,7 @@
     { "src": "/api/health",      "dest": "/api/health.js" },
     { "src": "/api/addons/get",  "dest": "/api/addons/get.js" },
     { "src": "/api/addons/set",  "dest": "/api/addons/set.js" },
+    { "src": "/api/login",       "dest": "/api/login.js" },
     { "src": "/",                "dest": "/api/configure.js" }
   ]
 }
