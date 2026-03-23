@@ -622,7 +622,7 @@ body {
 
   <div class="auth-section">
     <div class="auth-indicator" id="authIndicator" title="Connection status"></div>
-    <div style="flex: 1; display: flex; flex-direction: column; gap: 10px;">
+    <div style="flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0;">
       
       <div class="seg-ctrl" id="authModeCtrl" style="align-self: flex-start;">
         <button data-mode="account" class="active">Stremio Account</button>
@@ -636,10 +636,10 @@ body {
         <button class="btn btn-ghost btn-danger" id="btnLogout" style="display: none;">Logout</button>
       </div>
 
-      <div id="loginKeyForm" style="display: none; flex-direction: column; gap: 6px;">
+      <div id="loginKeyForm" style="display: none; flex-direction: column; gap: 6px; width: 100%;">
         <input type="password" id="authKeyInput" placeholder="Paste your Stremio auth key here…" autocomplete="off" style="margin: 0;" />
         <span style="font-size: 0.75rem; color: var(--text-dim); line-height: 1.4;">
-          <strong>How to get your key:</strong> Open Stremio (Web or Desktop), press <code>F12</code> to open Developer Tools, go to the <strong>Console</strong> tab, paste <code style="background: var(--bg-deep); border: 1px solid var(--border); padding: 2px 5px; border-radius: 4px; color: var(--accent-hi); user-select: all; cursor: pointer;">console.log(JSON.parse(localStorage.getItem('profile')).auth.key)</code> and press Enter.
+          <strong>How to get your key:</strong> Open Stremio (Web or Desktop), press <code>F12</code> to open Developer Tools, go to the <strong>Console</strong> tab, paste <code style="background: var(--bg-deep); border: 1px solid var(--border); padding: 2px 5px; border-radius: 4px; color: var(--accent-hi); user-select: all; cursor: pointer; word-break: break-all;">console.log(JSON.parse(localStorage.getItem('profile')).auth.key)</code> and press Enter.
         </span>
       </div>
 
