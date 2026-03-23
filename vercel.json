@@ -1,0 +1,7 @@
+{
+  "routes": [
+    { "src": "/manifest.json", "dest": "/api/manifest" },
+    { "src": "/configure", "dest": "/public/index.html" },
+    { "src": "/", "dest": "/public/index.html" }
+  ]
+}
