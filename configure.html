@@ -878,9 +878,15 @@ function buildCard(addon, idx) {
 
   const isPinned   = pinned.has(url);
 
-  // Protect Addon Manager, Cinemeta, and Local Files from deletion
-  const protectedIds = ['community.addon-manager', 'official.cinemeta', 'local', 'org.stremio.local'];
-  const isProtected = protectedIds.includes(man.id);
+// Safely get the ID, defaulting to an empty string if it's missing
+  const addonId = (man.id || '').toLowerCase();
+
+  // Protect Addon Manager, Local Files, and ANY addon containing "cinemeta"
+  const isProtected = 
+    addonId === 'community.addon-manager' || 
+    addonId === 'local' || 
+    addonId === 'org.stremio.local' ||
+    addonId.includes('cinemeta'); // Catches official.cinemeta, com.linvo.cinemeta, etc.
   
   // Check if the addon has a configuration page
   const isConfigurable = man.behaviorHints?.configurable === true;
