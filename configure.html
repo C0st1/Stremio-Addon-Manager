@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Stremio Addon Manager</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-deep:     #07070f;
+  --bg-card:     #0f0f1e;
+  --bg-panel:    #13132a;
+  --bg-hover:    #1a1a35;
+  --border:      #2a2a4a;
+  --border-glow: #5b4fcf55;
+  --accent:      #7c5cbf;
+  --accent-glow: #7c5cbf66;
+  --accent-hi:   #a07ef5;
+  --danger:      #cf4f5b;
+  --success:     #4fcfa0;
+  --warning:     #cfaa4f;
+  --text-pri:    #e8e6f5;
+  --text-sec:    #8a88aa;
+  --text-dim:    #5a5878;
+  --drag-bg:     #1c1c38;
+  --pin-color:   #cfaa4f;
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   16px;
+  --shadow:      0 4px 24px #00000066;
+  --font-sans:   'DM Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-mono:   'JetBrains Mono', 'Fira Code', monospace;
+}
+
+html { font-size: 15px; scroll-behavior: smooth; }
+
+body {
+  background: var(--bg-deep);
+  color: var(--text-pri);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  min-height: 100vh;
+  padding: 0;
+  /* subtle grid texture */
+  background-image:
+    linear-gradient(rgba(124,92,191,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124,92,191,.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════════════════ */
+.app {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 16px 80px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════════════════ */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 0 24px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+.header-icon {
+  width: 46px; height: 46px;
+  background: linear-gradient(135deg, #5b4fcf, #a07ef5);
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+.header-text h1 { font-size: 1.35rem; font-weight: 700; letter-spacing: -.3px; }
+.header-text p  { color: var(--text-sec); font-size: .82rem; margin-top: 2px; }
+.header-actions { margin-left: auto; display: flex; gap: 8px; flex-shrink: 0; }
+
+/* ═══════════════════════════════════════════════════════
+   TOOLBAR (search, source toggle, action buttons)
+═══════════════════════════════════════════════════════ */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+}
+.search-wrap svg {
+  position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+  color: var(--text-dim); pointer-events: none;
+}
+#searchInput {
+  width: 100%;
+  padding: 9px 12px 9px 36px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-pri);
+  font-size: .88rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .2s;
+}
+#searchInput:focus { border-color: var(--accent); }
+#searchInput::placeholder { color: var(--text-dim); }
+
+.seg-ctrl {
+  display: flex;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.seg-ctrl button {
+  padding: 8px 14px;
+  background: none;
+  border: none;
+  color: var(--text-sec);
+  font-size: .82rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.seg-ctrl button.active {
+  background: var(--accent);
+  color: #fff;
+}
+.seg-ctrl button:hover:not(.active) { background: var(--bg-hover); color: var(--text-pri); }
+
+/* ═══════════════════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════════════════ */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-size: .85rem;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all .15s;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.btn-primary:hover { background: var(--accent-hi); border-color: var(--accent-hi); box-shadow: 0 0 16px var(--accent-glow); }
+.btn-ghost {
+  background: var(--bg-panel);
+  color: var(--text-sec);
+  border-color: var(--border);
+}
+.btn-ghost:hover { background: var(--bg-hover); color: var(--text-pri); border-color: var(--accent); }
+.btn-danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: #cf4f5b44;
+}
+.btn-danger:hover { background: #cf4f5b22; }
+.btn-success {
+  background: var(--success);
+  color: #0a1a14;
+  border-color: var(--success);
+}
+.btn[disabled] { opacity: .4; cursor: not-allowed; pointer-events: none; }
+.btn-icon {
+  width: 32px; height: 32px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm);
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-sec);
+  cursor: pointer;
+  transition: all .15s;
+  font-size: .9rem;
+}
+.btn-icon:hover { background: var(--bg-hover); color: var(--text-pri); border-color: var(--accent); }
+.btn-icon.danger:hover { color: var(--danger); border-color: var(--danger); background: #cf4f5b11; }
+.btn-icon.pin.pinned { color: var(--pin-color); border-color: var(--pin-color); background: #cfaa4f11; }
+.btn-icon.toggle-vis.disabled-addon { color: var(--text-dim); }
+
+/* ═══════════════════════════════════════════════════════
+   SECTION HEADER (category labels)
+═══════════════════════════════════════════════════════ */
+.section-label {
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 14px 0 6px;
+}
+.section-label span {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2px 10px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   ADDON CARD
+═══════════════════════════════════════════════════════ */
+#addonList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.addon-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: background .15s, border-color .15s, opacity .15s, box-shadow .15s;
+  position: relative;
+  cursor: default;
+  user-select: none;
+}
+.addon-card:hover { background: var(--bg-hover); border-color: var(--border-glow); }
+.addon-card.dragging {
+  opacity: .55;
+  background: var(--drag-bg);
+  border-color: var(--accent);
+  box-shadow: 0 8px 32px #00000088;
+  z-index: 999;
+}
+.addon-card.drag-over {
+  border-color: var(--accent-hi);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+.addon-card.disabled-addon {
+  opacity: .5;
+}
+.addon-card.pinned-addon {
+  border-left: 3px solid var(--pin-color);
+}
+.addon-card.hidden { display: none; }
+
+/* Drag handle */
+.drag-handle {
+  color: var(--text-dim);
+  cursor: grab;
+  padding: 4px;
+  flex-shrink: 0;
+  touch-action: none;
+  transition: color .15s;
+}
+.drag-handle:hover { color: var(--accent-hi); }
+.drag-handle:active { cursor: grabbing; }
+.addon-card.disabled-addon .drag-handle { cursor: not-allowed; }
+
+/* Addon icon */
+.addon-icon {
+  width: 40px; height: 40px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  font-size: 1.2rem;
+}
+.addon-icon img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+}
+.addon-icon-placeholder {
+  font-size: 1.2rem;
+}
+
+/* Addon info */
+.addon-info { flex: 1; min-width: 0; }
+.addon-name {
+  font-weight: 600;
+  font-size: .92rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: flex; align-items: center; gap: 6px;
+}
+.addon-version {
+  font-size: .7rem;
+  color: var(--text-dim);
+  font-weight: 400;
+}
+.addon-desc {
+  font-size: .78rem;
+  color: var(--text-sec);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-top: 1px;
+}
+.addon-tags {
+  display: flex; gap: 4px; flex-wrap: wrap;
+  margin-top: 4px;
+}
+.tag {
+  font-size: .66rem;
+  padding: 1px 7px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  background: var(--bg-panel);
+}
+.tag.stream  { border-color: #4f8bcf55; color: #7ab0e8; background: #4f8bcf11; }
+.tag.catalog { border-color: #4fcf8b55; color: #7ae8b0; background: #4fcf8b11; }
+.tag.meta    { border-color: #cf4fcf55; color: #e87ae8; background: #cf4fcf11; }
+.tag.subtitles { border-color: #cfcf4f55; color: #e8e87a; background: #cfcf4f11; }
+.tag.other   { border-color: var(--border); color: var(--text-dim); }
+
+/* Card actions */
+.card-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  align-items: center;
+}
+.move-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.move-btns .btn-icon {
+  width: 26px; height: 22px; font-size: .7rem;
+}
+
+/* Order badge */
+.order-badge {
+  position: absolute;
+  top: 6px; left: 6px;
+  font-size: .62rem;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  min-width: 18px;
+  text-align: center;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SAVE BAR
+═══════════════════════════════════════════════════════ */
+.save-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: #0f0f1eee;
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transform: translateY(100%);
+  transition: transform .3s ease;
+  z-index: 100;
+}
+.save-bar.visible { transform: translateY(0); }
+.save-bar-text { flex: 1; font-size: .85rem; color: var(--text-sec); }
+.save-bar-text strong { color: var(--accent-hi); }
+
+/* ═══════════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════════ */
+#toast {
+  position: fixed;
+  bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 20px;
+  font-size: .85rem;
+  color: var(--text-pri);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s, transform .25s;
+  z-index: 200;
+  white-space: nowrap;
+  box-shadow: var(--shadow);
+  display: flex; align-items: center; gap: 8px;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.success { border-color: var(--success); }
+#toast.error   { border-color: var(--danger);  }
+#toast.warning { border-color: var(--warning); }
+
+/* ═══════════════════════════════════════════════════════
+   MODAL (auth key, backup, confirm)
+═══════════════════════════════════════════════════════ */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: #00000088;
+  backdrop-filter: blur(4px);
+  z-index: 300;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s;
+  padding: 16px;
+}
+.modal-backdrop.open { opacity: 1; pointer-events: auto; }
+.modal {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  width: 100%; max-width: 440px;
+  box-shadow: 0 20px 60px #000000aa;
+  transform: scale(.96);
+  transition: transform .2s;
+}
+.modal-backdrop.open .modal { transform: scale(1); }
+.modal h2 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
+.modal p  { font-size: .85rem; color: var(--text-sec); margin-bottom: 16px; line-height: 1.6; }
+.modal label { display: block; font-size: .8rem; color: var(--text-sec); margin-bottom: 4px; }
+.modal input, .modal textarea, .modal select {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-pri);
+  font-family: inherit;
+  font-size: .88rem;
+  outline: none;
+  transition: border-color .2s;
+  margin-bottom: 14px;
+}
+.modal input:focus, .modal textarea:focus, .modal select:focus { border-color: var(--accent); }
+.modal textarea { resize: vertical; min-height: 100px; font-family: var(--font-mono); font-size: .78rem; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* ═══════════════════════════════════════════════════════
+   STATUS / EMPTY STATES
+═══════════════════════════════════════════════════════ */
+.status-panel {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-sec);
+  font-size: .88rem;
+}
+.status-panel .icon { font-size: 3rem; margin-bottom: 14px; }
+.status-panel h3 { color: var(--text-pri); margin-bottom: 6px; }
+
+/* spinner */
+.spinner {
+  width: 18px; height: 18px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent-hi);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ═══════════════════════════════════════════════════════
+   STATS BAR
+═══════════════════════════════════════════════════════ */
+.stats-bar {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: .8rem;
+  color: var(--text-sec);
+}
+.stat { display: flex; align-items: center; gap: 5px; }
+.stat-val { color: var(--text-pri); font-weight: 600; font-family: var(--font-mono); }
+
+/* ═══════════════════════════════════════════════════════
+   AUTH KEY SECTION
+═══════════════════════════════════════════════════════ */
+.auth-section {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.auth-section label { font-size: .8rem; color: var(--text-sec); white-space: nowrap; }
+.auth-section input {
+  flex: 1;
+  padding: 7px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-pri);
+  font-family: var(--font-mono);
+  font-size: .78rem;
+  outline: none;
+  min-width: 120px;
+}
+.auth-section input:focus { border-color: var(--accent); }
+.auth-indicator {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  flex-shrink: 0;
+}
+.auth-indicator.connected { background: var(--success); box-shadow: 0 0 6px var(--success); }
+
+/* ═══════════════════════════════════════════════════════
+   GROUPING TOGGLE
+═══════════════════════════════════════════════════════ */
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 4px;
+  cursor: pointer;
+  user-select: none;
+}
+.group-header:hover .group-title { color: var(--text-pri); }
+.group-title {
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  transition: color .15s;
+}
+.group-chevron {
+  color: var(--text-dim);
+  transition: transform .2s;
+  font-size: .75rem;
+}
+.group-header.collapsed .group-chevron { transform: rotate(-90deg); }
+.group-count {
+  font-size: .7rem;
+  padding: 1px 7px;
+  border-radius: 20px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+.group-body.collapsed { display: none; }
+
+/* ═══════════════════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════════════════ */
+@media (max-width: 600px) {
+  .addon-desc { display: none; }
+  .addon-tags { display: none; }
+  .header-text p { display: none; }
+  .move-btns { display: none; }
+  .auth-section { flex-direction: column; align-items: flex-start; }
+  .auth-section input { width: 100%; }
+  .save-bar { padding: 10px 14px; }
+}
+</style>
+<!-- SortableJS for drag-and-drop (inline CDN — bundled locally for offline use) -->
+<script>
+/*! SortableJS v1.15.2 — bundled inline (MIT License) */
+!function(t,e){"object"==typeof exports&&"undefined"!=typeof module?module.exports=e():"function"==typeof define&&define.amd?define(e):(t="undefined"!=typeof globalThis?globalThis:t||self).Sortable=e()}(this,function(){"use strict";function t(e,n){var o=Object.keys(e);if(Object.getOwnPropertySymbols){var r=Object.getOwnPropertySymbols(e);n&&(r=r.filter(function(t){return Object.getOwnPropertyDescriptor(e,t).enumerable})),o.push.apply(o,r)}return o}function e(e){for(var n=1;n<arguments.length;n++){var o=null!=arguments[n]?arguments[n]:{};n%2?t(Object(o),!0).forEach(function(t){s(e,t,o[t])}):Object.getOwnPropertyDescriptors?Object.defineProperties(e,Object.getOwnPropertyDescriptors(o)):t(Object(o)).forEach(function(t){Object.defineProperty(e,t,Object.getOwnPropertyDescriptor(o,t))})}return e}function n(t){return(n="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(t){return typeof t}:function(t){return t&&"function"==typeof Symbol&&t.constructor===Symbol&&t!==Symbol.prototype?"symbol":typeof t})(t)}function o(t){return t.charAt(0).toUpperCase()+t.slice(1)}function r(t,e){if("undefined"==typeof window||!window.document)return e;var n=window.getComputedStyle(t,null),o=e.split(".");if(1===o.length)return n[e];for(var r=0,s=o.length;r<s;r++)t=t[o[r]];return t}function s(t,e,n){return e=function(t){var e=function(t,e){if("object"!=n(t)||!t)return t;var o=t[Symbol.toPrimitive];if(void 0!==o){var r=o.call(t,e||"default");if("object"!=n(r))return r;throw new TypeError("@@toPrimitive must return a primitive value.")}return("string"===e?String:Number)(t)}(t,"string");return"symbol"==n(e)?e:String(e)}(e),e in t?Object.defineProperty(t,e,{value:n,enumerable:!0,configurable:!0,writable:!0}):t[e]=n,t}function i(t){return t.nodeName&&t.nodeName.toLowerCase()}function a(t,e){return("none"===t.css("pointer-events")||"none"===t.css("display")||"none"===t.css("visibility")||parseFloat(t.css("opacity"))<=0)&&!e&&t.closest("[hidden]")}var c=[];function l(t){for(var e in t)if(t.hasOwnProperty(e))return!1;return!0}function f(t,e,n){if(t&&e&&n){t.addEventListener(e,n)}}function d(t,e,n){if(t&&e&&n){t.removeEventListener(e,n)}}function u(t,e){if(t&&e){t.sortable&&t.sortable.destroy(),t.sortable=e}}function h(t){return function(e){var n=e.originalEvent||e;if(n.dataTransfer&&n.dataTransfer.types){for(var o=0;o<n.dataTransfer.types.length;o++)if("Files"===n.dataTransfer.types[o])return!1}return!0}}var p,m,v,g,b,y,w,x,k,E,M,O,A,D,S,_,T,N,C,B,I,j,P,L,R,X,F,W,Y,z,H,V,q,U=[];function G(t){if(U.indexOf(t)===-1){U.push(t);return}throw new Error("Sortable: Can't mount plugin more than once")}function Z(t,e){return t&&e?t.toString()===e.toString():void 0}function J(t){if(void 0===t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return t}function Q(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}function K(t,e){return e&&("object"===n(e)||"function"==typeof e)?e:J(t)}function tt(t,e){for(;!Object.prototype.hasOwnProperty.call(t,e)&&null!==(t=Object.getPrototypeOf(t)););return t}function et(t,e,n){return(e=it(e))in t?Object.defineProperty(t,e,{value:n,enumerable:!0,configurable:!0,writable:!0}):t[e]=n,t}function nt(t){return(nt=Object.setPrototypeOf?Object.getPrototypeOf.bind():function(t){return t.__proto__||Object.getPrototypeOf(t)})(t)}function ot(t,e){return(ot=Object.setPrototypeOf?Object.setPrototypeOf.bind():function(t,e){return t.__proto__=e,t})(t,e)}function rt(t){if("undefined"==typeof WeakMap)return null;var e=new WeakMap;return(rt=function(t){return e})(t)}function st(t,e){var n=rt(ot);if(!n)return Object.create(t);var o=n.get(t);if(!o){var r=Object.create(t);n.set(t,o=r)}var s=Object.getOwnPropertyDescriptor(t,"constructor"),i=s&&s.value,a="function"==typeof i&&i===o.constructor;return a?Object.create(o):(Object.defineProperty(o,"constructor",{value:e||function(){}),o)}function it(t){var e=function(t,e){if("object"!=n(t)||!t)return t;var o=t[Symbol.toPrimitive];if(void 0!==o){var r=o.call(t,"string");if("object"!=n(r))return r;throw new TypeError("@@toPrimitive must return a primitive value.")}return String(t)}(t);return"symbol"==n(e)?e:String(e)}var at=[];function ct(t){at.push(t);var e=function(){at.splice(at.indexOf(t),1)};return t.utils={on:f,off:d,css:r,find:function(t,e,n){var o=t.querySelectorAll(e);for(var r in o)o.hasOwnProperty(r)&&n(o[r],+r)},is:function(t,e){return!!(t.matches||t.matchesSelector||t.msMatchesSelector||t.mozMatchesSelector||t.webkitMatchesSelector||t.oMatchesSelector).call(t,e)},extend:function(t,e){if(t&&e)for(var n in e)e.hasOwnProperty(n)&&(t[n]=e[n]);return t},throttle:function(t,e){var n,o;return function(){var r=arguments,s=this;n?o=!0:(n=!0,setTimeout(function(){o&&t.apply(s,r),n=!1,o=!1},e),t.apply(s,r))}},closest:function(t,e,n,o){for(;t;){if(e&&t.matches(e)&&(!n||n.contains(t))&&(!o||t!==o))return t;if(t===n)break;t=t.parentNode}return null},toggleClass:function(t,e,n){t&&e&&(t.classList?n?t.classList.add(e):t.classList.remove(e):(n?t.className+=" "+e:t.className=t.className.replace(new RegExp("(^|\\b)"+e.split(" ").join("|")+"(\\b|$)")," ")).trim())},index:function(t,e){var n=0,o=t.parentNode;if(o){for(;null!==(t=t.previousElementSibling);)"TEMPLATE"===t.nodeName.toUpperCase()||"./.".test(t.getAttribute("class"))||e&&!t.matches(e)||n++;return n}return-1},nextTick:function(t){return setTimeout(t,0)},cancelNextTick:function(t){return clearTimeout(t)},detectDirection:function(t,e){var n=r(t,"direction"),o=r(t,"display"),s=window.getComputedStyle(t.children[0]||t),i=parseInt(r(t,"height")),a=parseInt(r(t,"paddingTop")),c=parseInt(r(t,"paddingBottom")),l=parseInt(s["marginTop"])||0,f=parseInt(s["marginBottom"])||0,d=t.children[1]&&parseInt(r(t.children[1],"marginTop"))||0;return n||"flex"!==o&&"inline-flex"!==o?"column"===n||"column"===o?"vertical":"inline"===n||"inline"===o?"horizontal":t.offsetWidth<t.scrollWidth?"horizontal":"vertical":"row"===r(t,"flex-direction")||r(t,"flex-direction").indexOf("row")!==-1?"horizontal":"vertical"},getChild:function(t,e,n,o){var r=0,s=t.children;for(var i=0,a=s.length;i<a;i++){var c=s[i];if("TEMPLATE"===c.nodeName.toUpperCase()||c===Sortable.ghost||o&&Sortable.filter&&c.matches(Sortable.filter))continue;if(r===e)return c;r++}return null},getParentAutoScrollElement:function(t,e){if(!t||!t.getBoundingClientRect)return m();for(var n=t,o=!1,r=window,s=r.document,i=s.scrollingElement||s.documentElement;n;){if(n===i)return r;if(!o&&n.height<n.scrollHeight||!o&&n.width<n.scrollWidth){var a=window.getComputedStyle(n);if(!("visible"===a.overflow&&!e||"visible"===a.overflowX&&!e||"visible"===a.overflowY&&!e)&&("auto"===a.overflow||"scroll"===a.overflow||"auto"===a.overflowX||"scroll"===a.overflowX||"auto"===a.overflowY||"scroll"===a.overflowY))return n}n=n.parentNode}return r},expando:"Sortable"+Date.now()},e}var lt=function(){function t(){Q(this,t)}return t}();function ft(t,e){var n=e.group;lt.prototype=t,n&&"object"===n(n)||(e.group={name:n,pull:!0,put:!0,revertClone:!1})}var dt="Sortable"+Math.random().toString(36).substr(2),ut="Sortable:dragStart",ht="Sortable:dragMove",pt="Sortable:drop";function mt(t,e){var n=new CustomEvent(t,{bubbles:!0,cancelable:!0,detail:e});return n}function vt(t){return window.Sortable&&window.Sortable[dt]===t}var gt=function(){};function bt(t,e){var n,o=J(K(this,tt(bt).call(this)));return et(J(o),"sortable",void 0),et(J(o),"options",void 0),et(J(o),"el",void 0),Q(J(o),bt),o.el=t,o.options=e=e||{},ot(J(o),nt(bt).prototype),n=o,o.sortable=new Sortable(t,e),Object.assign(J(n),Sortable.utils),n}var yt=function(){};function wt(){return window.Sortable}// End of SortableJS
+</script>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── HEADER ─────────────────────────────────────────────── -->
+  <div class="header">
+    <div class="header-icon">🎬</div>
+    <div class="header-text">
+      <h1>Addon Manager</h1>
+      <p>Reorder, organize, and manage your Stremio addons</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-ghost" id="btnBackup" title="Backup / Restore">📦 Backup</button>
+      <button class="btn btn-ghost" id="btnRefresh" title="Reload addons from Stremio">↻ Refresh</button>
+    </div>
+  </div>
+
+  <!-- ── AUTH KEY ───────────────────────────────────────────── -->
+  <div class="auth-section">
+    <div class="auth-indicator" id="authIndicator" title="Connection status"></div>
+    <label for="authKeyInput">Auth Key <span style="color:var(--text-dim)">(optional — for cloud sync)</span></label>
+    <input type="password" id="authKeyInput" placeholder="Paste your Stremio auth key here…" autocomplete="off" />
+    <div class="seg-ctrl" id="sourceCtrl">
+      <button data-src="local" class="active" title="Use the local Stremio desktop server">Local</button>
+      <button data-src="cloud" title="Use Stremio cloud API (requires auth key)">Cloud</button>
+      <button data-src="both"  title="Save to both local and cloud">Both</button>
+    </div>
+  </div>
+
+  <!-- ── TOOLBAR ────────────────────────────────────────────── -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" id="searchInput" placeholder="Search addons…" />
+    </div>
+    <div class="seg-ctrl" id="groupCtrl">
+      <button data-grp="none" class="active">All</button>
+      <button data-grp="type">By Type</button>
+    </div>
+    <button class="btn btn-ghost" id="btnShowDisabled" title="Toggle visibility of disabled addons">👁 Disabled</button>
+  </div>
+
+  <!-- ── STATS BAR ──────────────────────────────────────────── -->
+  <div class="stats-bar" id="statsBar" style="display:none">
+    <div class="stat">Total <span class="stat-val" id="statTotal">0</span></div>
+    <div class="stat">Active <span class="stat-val" id="statActive">0</span></div>
+    <div class="stat">Disabled <span class="stat-val" id="statDisabled">0</span></div>
+    <div class="stat">Pinned <span class="stat-val" id="statPinned">0</span></div>
+  </div>
+
+  <!-- ── ADDON LIST ─────────────────────────────────────────── -->
+  <div id="addonList">
+    <div class="status-panel" id="emptyState">
+      <div class="icon">🔌</div>
+      <h3>No addons loaded</h3>
+      <p>Make sure Stremio desktop is running, then click <strong>Refresh</strong>.</p>
+      <br/>
+      <button class="btn btn-primary" onclick="loadAddons()">Load Addons</button>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- ── SAVE BAR ───────────────────────────────────────────────── -->
+<div class="save-bar" id="saveBar">
+  <div class="save-bar-text">You have <strong id="changesCount">0</strong> unsaved change(s)</div>
+  <button class="btn btn-ghost btn-danger" id="btnDiscard">Discard</button>
+  <button class="btn btn-primary" id="btnSave">
+    <span id="saveBtnText">Save & Apply</span>
+    <span id="saveSpinner" class="spinner" style="display:none"></span>
+  </button>
+</div>
+
+<!-- ── TOAST ─────────────────────────────────────────────────── -->
+<div id="toast"></div>
+
+<!-- ── BACKUP MODAL ───────────────────────────────────────────── -->
+<div class="modal-backdrop" id="backupModal">
+  <div class="modal">
+    <h2>📦 Backup & Restore</h2>
+    <p>Export your current addon list as JSON, or paste a backup to restore it.</p>
+    <label>Export / Import JSON</label>
+    <textarea id="backupText" rows="8" placeholder="Your addon collection JSON will appear here…"></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="btnCopyBackup">Copy</button>
+      <button class="btn btn-ghost" id="btnDownloadBackup">⬇ Download</button>
+      <button class="btn btn-primary" id="btnRestoreBackup">↩ Restore from text</button>
+      <button class="btn btn-ghost" onclick="closeModal('backupModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── CONFIRM MODAL ─────────────────────────────────────────── -->
+<div class="modal-backdrop" id="confirmModal">
+  <div class="modal">
+    <h2 id="confirmTitle">Are you sure?</h2>
+    <p id="confirmBody"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="confirmCancel">Cancel</button>
+      <button class="btn btn-danger" id="confirmOk">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   STREMIO ADDON MANAGER — client-side application
+   All API calls go to the local Express proxy (this very server)
+   which then forwards them to the Stremio local or cloud API.
+═══════════════════════════════════════════════════════════════════ */
+
+// Injected by the server — points to the Express app's base URL
+const API_BASE = '__API_BASE__';
+
+// ─── State ────────────────────────────────────────────────────────
+let addons      = [];        // current ordered array of addon objects
+let original    = [];        // snapshot at load time (for change detection)
+let disabled    = new Set(); // transportUrls of "disabled" addons
+let pinned      = new Set(); // transportUrls of "pinned" addons
+let groupMode   = 'none';    // 'none' | 'type'
+let showDisabled= true;
+let sortable    = null;      // SortableJS instance
+
+// ─── Shortcuts ────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const addonList = $('addonList');
+
+// ─── Source selector ─────────────────────────────────────────────
+let currentSource = 'local';
+document.querySelectorAll('#sourceCtrl button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#sourceCtrl button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentSource = btn.dataset.src;
+  });
+});
+
+// ─── Group selector ───────────────────────────────────────────────
+document.querySelectorAll('#groupCtrl button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#groupCtrl button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    groupMode = btn.dataset.grp;
+    renderList();
+  });
+});
+
+// ─── Search ───────────────────────────────────────────────────────
+$('searchInput').addEventListener('input', () => applyFilter());
+
+// ─── Disabled toggle ─────────────────────────────────────────────
+$('btnShowDisabled').addEventListener('click', () => {
+  showDisabled = !showDisabled;
+  $('btnShowDisabled').textContent = showDisabled ? '👁 Disabled' : '🙈 Disabled';
+  applyFilter();
+});
+
+// ─── Refresh ─────────────────────────────────────────────────────
+$('btnRefresh').addEventListener('click', loadAddons);
+
+// ─── Backup ───────────────────────────────────────────────────────
+$('btnBackup').addEventListener('click', openBackupModal);
+
+// ─── Save / Discard ───────────────────────────────────────────────
+$('btnSave').addEventListener('click', saveAddons);
+$('btnDiscard').addEventListener('click', () => {
+  addons = JSON.parse(JSON.stringify(original));
+  disabled.clear(); pinned.clear();
+  renderList();
+  hideSaveBar();
+  toast('Changes discarded', 'warning');
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   LOAD ADDONS
+═══════════════════════════════════════════════════════════════════ */
+async function loadAddons() {
+  addonList.innerHTML = `<div class="status-panel">
+    <div class="spinner" style="width:36px;height:36px;border-width:3px;margin:0 auto 16px"></div>
+    <p>Fetching your addon collection…</p>
+  </div>`;
+  $('statsBar').style.display = 'none';
+
+  const authKey = $('authKeyInput').value.trim();
+
+  try {
+    const res  = await apiFetch('/api/addons/get', { authKey, source: currentSource });
+    const data = await res.json();
+
+    if (!data.ok) throw new Error(data.error || 'Unknown error');
+
+    addons   = data.addons || [];
+    original = JSON.parse(JSON.stringify(addons));
+
+    // Mark connection indicator as connected
+    $('authIndicator').classList.toggle('connected', !!authKey || currentSource === 'local');
+
+    renderList();
+    hideSaveBar();
+    toast(`Loaded ${addons.length} addon(s)`, 'success');
+  } catch (err) {
+    addonList.innerHTML = `<div class="status-panel">
+      <div class="icon">⚠️</div>
+      <h3>Could not load addons</h3>
+      <p>${escHtml(err.message)}</p>
+      <br/>
+      <p style="font-size:.78rem;color:var(--text-dim)">
+        Make sure Stremio desktop is running, or switch to Cloud source and enter your auth key.
+      </p>
+      <br/>
+      <button class="btn btn-primary" onclick="loadAddons()">Try Again</button>
+    </div>`;
+    toast(err.message, 'error');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   RENDER LIST
+═══════════════════════════════════════════════════════════════════ */
+function renderList() {
+  if (!addons.length) {
+    addonList.innerHTML = `<div class="status-panel" id="emptyState">
+      <div class="icon">🔌</div><h3>No addons loaded</h3>
+      <p>Click Refresh to load your installed addons.</p>
+    </div>`;
+    $('statsBar').style.display = 'none';
+    return;
+  }
+
+  // Destroy old sortable
+  if (sortable) { try { sortable.destroy(); } catch(e){} sortable = null; }
+
+  // Update stats
+  updateStats();
+
+  if (groupMode === 'type') {
+    renderGrouped();
+  } else {
+    renderFlat();
+  }
+
+  applyFilter();
+}
+
+function renderFlat() {
+  addonList.innerHTML = '';
+  addons.forEach((addon, idx) => {
+    addonList.appendChild(buildCard(addon, idx));
+  });
+  initSortable(addonList);
+}
+
+function renderGrouped() {
+  const groups = groupByType(addons);
+  addonList.innerHTML = '';
+
+  groups.forEach(({ label, color, items }) => {
+    const section = document.createElement('div');
+    section.className = 'group-section';
+    section.dataset.group = label;
+
+    const hdr = document.createElement('div');
+    hdr.className = 'group-header';
+    hdr.innerHTML = `
+      <span class="group-chevron">▾</span>
+      <span class="group-title" style="color:${color}">${label}</span>
+      <span class="group-count">${items.length}</span>`;
+    hdr.addEventListener('click', () => {
+      hdr.classList.toggle('collapsed');
+      body.classList.toggle('collapsed');
+    });
+
+    const body = document.createElement('div');
+    body.className = 'group-body';
+    body.style.display = 'flex';
+    body.style.flexDirection = 'column';
+    body.style.gap = '6px';
+
+    items.forEach(({ addon, idx }) => body.appendChild(buildCard(addon, idx)));
+
+    section.appendChild(hdr);
+    section.appendChild(body);
+    addonList.appendChild(section);
+    initSortable(body);
+  });
+}
+
+/* ── Build a single addon card ── */
+function buildCard(addon, idx) {
+  const url     = addon.transportUrl || addon.manifest?.transportUrl || '';
+  const man     = addon.manifest || addon;
+  const name    = man.name    || 'Unnamed Addon';
+  const version = man.version || '';
+  const desc    = man.description || man.shortDescription || '';
+  const logo    = man.logo || man.icon || '';
+  const types   = man.types   || [];
+  const res     = man.resources || [];
+
+  const isDisabled = disabled.has(url);
+  const isPinned   = pinned.has(url);
+  const isSelf     = (man.id === 'community.addon-manager');
+
+  const card = document.createElement('div');
+  card.className = 'addon-card'
+    + (isDisabled ? ' disabled-addon' : '')
+    + (isPinned   ? ' pinned-addon'   : '');
+  card.dataset.url  = url;
+  card.dataset.idx  = idx;
+  card.dataset.name = name.toLowerCase();
+  card.draggable    = false; // SortableJS handles it
+
+  // Icon
+  const iconHtml = logo
+    ? `<img src="${escHtml(logo)}" alt="" onerror="this.parentNode.innerHTML='🔌'" loading="lazy"/>`
+    : `<span class="addon-icon-placeholder">🔌</span>`;
+
+  // Tags
+  const allRes   = [...new Set([...types, ...res.map(r => typeof r === 'string' ? r : r.name || '')])];
+  const tagHtml  = allRes.slice(0, 4).map(t => `<span class="tag ${tagClass(t)}">${escHtml(t)}</span>`).join('');
+
+  card.innerHTML = `
+    <span class="order-badge">${idx + 1}</span>
+    <div class="drag-handle" title="Drag to reorder">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+        <circle cx="9" cy="5"  r="2"/><circle cx="15" cy="5"  r="2"/>
+        <circle cx="9" cy="12" r="2"/><circle cx="15" cy="12" r="2"/>
+        <circle cx="9" cy="19" r="2"/><circle cx="15" cy="19" r="2"/>
+      </svg>
+    </div>
+    <div class="addon-icon">${iconHtml}</div>
+    <div class="addon-info">
+      <div class="addon-name">
+        ${escHtml(name)}
+        <span class="addon-version">v${escHtml(version)}</span>
+        ${isPinned ? '<span title="Pinned" style="color:var(--pin-color);font-size:.7rem">📌</span>' : ''}
+      </div>
+      <div class="addon-desc">${escHtml(desc)}</div>
+      <div class="addon-tags">${tagHtml}</div>
+    </div>
+    <div class="card-actions">
+      <div class="move-btns">
+        <button class="btn-icon move-up"   title="Move up"   data-url="${escHtml(url)}">▲</button>
+        <button class="btn-icon move-down" title="Move down" data-url="${escHtml(url)}">▼</button>
+      </div>
+      <button class="btn-icon toggle-vis ${isDisabled ? 'disabled-addon' : ''}"
+        title="${isDisabled ? 'Enable' : 'Disable'} addon" data-url="${escHtml(url)}">
+        ${isDisabled ? '◯' : '●'}
+      </button>
+      <button class="btn-icon pin ${isPinned ? 'pinned' : ''}"
+        title="${isPinned ? 'Unpin' : 'Pin to top'}" data-url="${escHtml(url)}">
+        📌
+      </button>
+      ${isSelf ? '' : `<button class="btn-icon danger remove" title="Remove addon" data-url="${escHtml(url)}" data-name="${escHtml(name)}">🗑</button>`}
+    </div>`;
+
+  // Wire up card action buttons
+  card.querySelector('.move-up').addEventListener('click', e => { e.stopPropagation(); moveAddon(url, -1); });
+  card.querySelector('.move-down').addEventListener('click', e => { e.stopPropagation(); moveAddon(url, 1); });
+  card.querySelector('.toggle-vis').addEventListener('click', e => { e.stopPropagation(); toggleDisable(url); });
+  card.querySelector('.pin').addEventListener('click', e => { e.stopPropagation(); togglePin(url); });
+  if (!isSelf) card.querySelector('.remove').addEventListener('click', e => { e.stopPropagation(); confirmRemove(url, name); });
+
+  return card;
+}
+
+/* ── Initialise SortableJS on a container ── */
+function initSortable(container) {
+  sortable = new Sortable(container, {
+    animation:     200,
+    handle:        '.drag-handle',
+    ghostClass:    'dragging',
+    chosenClass:   'dragging',
+    dragClass:     'dragging',
+    // Don't allow dragging pinned addons
+    filter:        '.pinned-addon',
+    onStart: e => e.item.classList.add('dragging'),
+    onEnd: e => {
+      e.item.classList.remove('dragging');
+      syncOrderFromDOM();
+      markChanged();
+    },
+  });
+}
+
+/* ─── Sync addons[] from the current DOM order after a drag ─── */
+function syncOrderFromDOM() {
+  const cards = addonList.querySelectorAll('.addon-card');
+  const urlToAddon = Object.fromEntries(addons.map(a => [a.transportUrl || a.manifest?.transportUrl, a]));
+  const newOrder = [];
+  cards.forEach(card => {
+    const a = urlToAddon[card.dataset.url];
+    if (a) newOrder.push(a);
+  });
+  // Preserve any addons missing from DOM (shouldn't happen, but safety)
+  addons.forEach(a => { if (!newOrder.includes(a)) newOrder.push(a); });
+  addons = newOrder;
+  updateOrderBadges();
+}
+
+/* ─── Move by keyboard arrows ─── */
+function moveAddon(url, delta) {
+  const idx = addons.findIndex(a => (a.transportUrl || a.manifest?.transportUrl) === url);
+  if (idx < 0) return;
+  const target = idx + delta;
+  if (target < 0 || target >= addons.length) return;
+  // Skip over pinned
+  [addons[idx], addons[target]] = [addons[target], addons[idx]];
+  renderList();
+  markChanged();
+}
+
+function toggleDisable(url) {
+  if (disabled.has(url)) disabled.delete(url); else disabled.add(url);
+  renderList();
+  markChanged();
+}
+
+function togglePin(url) {
+  if (pinned.has(url)) {
+    pinned.delete(url);
+  } else {
+    pinned.add(url);
+    // Move pinned addon to the top
+    const idx = addons.findIndex(a => (a.transportUrl || a.manifest?.transportUrl) === url);
+    if (idx > 0) { addons.unshift(addons.splice(idx, 1)[0]); }
+  }
+  renderList();
+  markChanged();
+}
+
+function confirmRemove(url, name) {
+  confirm_(`Remove "${name}"?`,
+    `This will remove the addon from your collection. You can always reinstall it later.`,
+    () => removeAddon(url));
+}
+
+function removeAddon(url) {
+  addons = addons.filter(a => (a.transportUrl || a.manifest?.transportUrl) !== url);
+  renderList();
+  markChanged();
+  toast(`Addon removed`, 'warning');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SAVE ADDONS
+═══════════════════════════════════════════════════════════════════ */
+async function saveAddons() {
+  const authKey = $('authKeyInput').value.trim();
+
+  // Build the array to send — exclude disabled addons from the live list
+  const toSend = addons.filter(a => !disabled.has(a.transportUrl || a.manifest?.transportUrl));
+
+  $('saveBtnText').textContent = 'Saving…';
+  $('saveSpinner').style.display = 'inline-block';
+  $('btnSave').disabled = true;
+
+  try {
+    const res  = await apiFetch('/api/addons/set', { authKey, addons: toSend, source: currentSource });
+    const data = await res.json();
+
+    if (!data.ok) throw new Error(data.error || 'Save failed');
+
+    original = JSON.parse(JSON.stringify(addons));
+    hideSaveBar();
+    toast('✓ Addon order saved!', 'success');
+  } catch (err) {
+    toast(`Save failed: ${err.message}`, 'error');
+  } finally {
+    $('saveBtnText').textContent = 'Save & Apply';
+    $('saveSpinner').style.display = 'none';
+    $('btnSave').disabled = false;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   BACKUP / RESTORE
+═══════════════════════════════════════════════════════════════════ */
+function openBackupModal() {
+  $('backupText').value = JSON.stringify(addons, null, 2);
+  openModal('backupModal');
+}
+
+$('btnCopyBackup').addEventListener('click', () => {
+  navigator.clipboard.writeText($('backupText').value)
+    .then(() => toast('Copied to clipboard!', 'success'))
+    .catch(() => toast('Copy failed', 'error'));
+});
+
+$('btnDownloadBackup').addEventListener('click', () => {
+  const blob = new Blob([$('backupText').value], { type: 'application/json' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = `stremio-addons-backup-${Date.now()}.json`;
+  a.click();
+  toast('Download started', 'success');
+});
+
+$('btnRestoreBackup').addEventListener('click', () => {
+  try {
+    const parsed = JSON.parse($('backupText').value);
+    if (!Array.isArray(parsed)) throw new Error('Root must be an array');
+    addons = parsed;
+    renderList();
+    markChanged();
+    closeModal('backupModal');
+    toast(`Restored ${addons.length} addon(s) — click Save to apply`, 'warning');
+  } catch (err) {
+    toast(`Invalid JSON: ${err.message}`, 'error');
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   FILTER / SEARCH
+═══════════════════════════════════════════════════════════════════ */
+function applyFilter() {
+  const q = $('searchInput').value.toLowerCase().trim();
+  const cards = addonList.querySelectorAll('.addon-card');
+  cards.forEach(card => {
+    const url        = card.dataset.url;
+    const nameMatch  = card.dataset.name.includes(q);
+    const isDisab    = disabled.has(url);
+    const hide       = !nameMatch || (isDisab && !showDisabled);
+    card.classList.toggle('hidden', hide);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   STATS & CHANGE DETECTION
+═══════════════════════════════════════════════════════════════════ */
+function updateStats() {
+  const total    = addons.length;
+  const disCount = disabled.size;
+  const pinCount = pinned.size;
+  const active   = total - disCount;
+  $('statTotal').textContent    = total;
+  $('statActive').textContent   = active;
+  $('statDisabled').textContent = disCount;
+  $('statPinned').textContent   = pinCount;
+  $('statsBar').style.display = total > 0 ? 'flex' : 'none';
+}
+
+function markChanged() {
+  const nChanges = changesCount();
+  $('changesCount').textContent = nChanges;
+  if (nChanges > 0) showSaveBar(); else hideSaveBar();
+}
+
+function changesCount() {
+  if (addons.length !== original.length) return Math.abs(addons.length - original.length);
+  let diff = 0;
+  addons.forEach((a, i) => {
+    const o = original[i];
+    if (!o || (a.transportUrl || a.manifest?.transportUrl) !== (o.transportUrl || o.manifest?.transportUrl)) diff++;
+  });
+  return diff + disabled.size;
+}
+
+function showSaveBar() { $('saveBar').classList.add('visible'); }
+function hideSaveBar()  { $('saveBar').classList.remove('visible'); }
+
+function updateOrderBadges() {
+  addonList.querySelectorAll('.addon-card').forEach((card, i) => {
+    const badge = card.querySelector('.order-badge');
+    if (badge) badge.textContent = i + 1;
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   GROUPING
+═══════════════════════════════════════════════════════════════════ */
+function groupByType(list) {
+  const map = {};
+  list.forEach((addon, idx) => {
+    const man   = addon.manifest || addon;
+    const types = [...(man.types || []), ...(man.resources || []).map(r => typeof r === 'string' ? r : r.name || '')];
+    const key   = types.length ? primaryType(types) : 'other';
+    if (!map[key]) map[key] = [];
+    map[key].push({ addon, idx });
+  });
+  const colorMap = { stream:'#7ab0e8', catalog:'#7ae8b0', meta:'#e87ae8', subtitles:'#e8e87a', other:'#8a88aa' };
+  return Object.entries(map).map(([label, items]) => ({ label, items, color: colorMap[label] || '#8a88aa' }));
+}
+
+function primaryType(types) {
+  if (types.includes('stream'))    return 'stream';
+  if (types.includes('catalog'))   return 'catalog';
+  if (types.includes('meta'))      return 'meta';
+  if (types.includes('subtitles')) return 'subtitles';
+  return types[0] || 'other';
+}
+
+function tagClass(t) {
+  if (['stream','catalog','meta','subtitles'].includes(t)) return t;
+  return 'other';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════════════════════ */
+async function apiFetch(path, body) {
+  return fetch(API_BASE + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+function escHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+let toastTimer;
+function toast(msg, type = 'info') {
+  const el = $('toast');
+  el.textContent = msg;
+  el.className   = `show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ''; }, 3200);
+}
+
+function openModal(id)  { $(id).classList.add('open');    }
+function closeModal(id) { $(id).classList.remove('open'); }
+
+// Close modal on backdrop click
+document.querySelectorAll('.modal-backdrop').forEach(bd => {
+  bd.addEventListener('click', e => { if (e.target === bd) closeModal(bd.id); });
+});
+
+// Confirm dialog
+let confirmCallback = null;
+function confirm_(title, body, cb) {
+  $('confirmTitle').textContent = title;
+  $('confirmBody').textContent  = body;
+  confirmCallback = cb;
+  openModal('confirmModal');
+}
+$('confirmOk').addEventListener('click', () => {
+  closeModal('confirmModal');
+  if (confirmCallback) confirmCallback();
+  confirmCallback = null;
+});
+$('confirmCancel').addEventListener('click', () => {
+  closeModal('confirmModal');
+  confirmCallback = null;
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   SortableJS — load from CDN fallback (inline stub above is a
+   placeholder; we load the real library here)
+═══════════════════════════════════════════════════════════════════ */
+(function loadSortable() {
+  // If the inline stub didn't define a real Sortable, load from CDN
+  if (typeof Sortable === 'undefined' || !Sortable.create) {
+    const s   = document.createElement('script');
+    s.src     = 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js';
+    s.onload  = () => { loadAddons(); };
+    s.onerror = () => {
+      // Fallback: stub Sortable so the rest of the app still works (no drag-and-drop)
+      window.Sortable = { create: () => ({ destroy: () => {} }) };
+      toast('Drag-and-drop unavailable (no internet for CDN). Use arrow buttons.', 'warning');
+      loadAddons();
+    };
+    document.head.appendChild(s);
+  } else {
+    loadAddons();
+  }
+})();
+</script>
+</body>
+</html>
