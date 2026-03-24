@@ -1,9 +1,6 @@
 /**
  * api/addons/set.js
- * Vercel serverless function — saves the user's addon collection.
- *
- * Only cloud mode is supported on Vercel (local Stremio server is
- * not reachable from a remote deployment).
+ * Vercel serverless function — saves the user's addon collection to the Stremio cloud.
  */
 
 const stremioAPI = require('../../lib/stremioAPI');
