@@ -1459,25 +1459,41 @@ $('btnApplyCinemeta').addEventListener('click', () => {
   targetCinemetaUrl = null;
 });
 
-$('btnResetCinemeta').addEventListener('click', () => {
+// NEW: Reset Button Logic (Fetches fresh copy directly from Stremio)
+$('btnResetCinemeta').addEventListener('click', async () => {
   if (!targetCinemetaUrl) return;
 
-  // Find the original, unmodified Cinemeta addon from the 'original' backup array
-  const pristineAddon = original.find(a => (a.transportUrl || a.manifest?.transportUrl) === targetCinemetaUrl);
-  const currentIndex = addons.findIndex(a => (a.transportUrl || a.manifest?.transportUrl) === targetCinemetaUrl);
+  const btn = $('btnResetCinemeta');
+  const originalText = btn.textContent;
+  btn.textContent = 'Resetting...';
+  btn.disabled = true;
 
-  if (pristineAddon && currentIndex !== -1) {
-    // Replace the mutated version with a fresh clone of the original
-    addons[currentIndex] = structuredClone(pristineAddon);
-    renderList();
-    markChanged();
-    toast('Cinemeta restored to default settings', 'success');
-  } else {
-    toast('Could not find original Cinemeta data to restore.', 'error');
+  try {
+    // 1. Fetch the pristine, unpatched manifest straight from Stremio
+    const res = await fetch('https://v3-cinemeta.strem.io/manifest.json');
+    if (!res.ok) throw new Error('Failed to fetch from Stremio');
+    const cleanManifest = await res.json();
+
+    const currentIndex = addons.findIndex(a => (a.transportUrl || a.manifest?.transportUrl) === targetCinemetaUrl);
+
+    if (currentIndex !== -1) {
+      // 2. Overwrite the corrupted/patched manifest with the pristine one
+      addons[currentIndex].manifest = cleanManifest;
+      
+      renderList();
+      markChanged();
+      toast('Cinemeta restored to default settings', 'success');
+    } else {
+      toast('Could not find Cinemeta in your list.', 'error');
+    }
+  } catch (err) {
+    toast('Error resetting: ' + err.message, 'error');
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+    closeModal('cinemetaModal');
+    targetCinemetaUrl = null;
   }
-
-  closeModal('cinemetaModal');
-  targetCinemetaUrl = null;
 });
 </script>
 </body>
