@@ -1202,10 +1202,17 @@ async function saveAddons() {
   $('btnSave').disabled = true;
 
   try {
-    const res  = await apiFetch('/api/addons/set', { authKey, addons });
+    // FAST BYPASS: Hit Stremio directly instead of bouncing through Vercel
+    // This eliminates serverless cold-starts and halves the network latency
+    const res = await fetch('https://api.strem.io/api/addonCollectionSet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ authKey, addons, type: 'AddonCollectionSet' }),
+    });
+    
     const data = await res.json();
 
-    if (!data.ok) throw new Error(data.error || 'Save failed');
+    if (data.error) throw new Error(data.error.message || 'Save failed');
 
     original = JSON.parse(JSON.stringify(addons));
     hideSaveBar();
