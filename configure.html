@@ -798,6 +798,8 @@ input.danger-toggle:checked + .slider { background-color: var(--danger); border-
     </div>
 
     <div class="modal-actions" style="margin-top: 20px;">
+      <button class="btn btn-ghost btn-danger" id="btnResetCinemeta" style="margin-right: auto;">Reset to Defaults</button>
+      
       <button class="btn btn-ghost" onclick="closeModal('cinemetaModal')">Cancel</button>
       <button class="btn btn-primary" id="btnApplyCinemeta">Apply Changes</button>
     </div>
@@ -1440,6 +1442,27 @@ $('btnApplyCinemeta').addEventListener('click', () => {
     renderList();
     markChanged();
     toast('Cinemeta manifest patched successfully', 'success');
+  }
+
+  closeModal('cinemetaModal');
+  targetCinemetaUrl = null;
+});
+
+$('btnResetCinemeta').addEventListener('click', () => {
+  if (!targetCinemetaUrl) return;
+
+  // Find the original, unmodified Cinemeta addon from the 'original' backup array
+  const pristineAddon = original.find(a => (a.transportUrl || a.manifest?.transportUrl) === targetCinemetaUrl);
+  const currentIndex = addons.findIndex(a => (a.transportUrl || a.manifest?.transportUrl) === targetCinemetaUrl);
+
+  if (pristineAddon && currentIndex !== -1) {
+    // Replace the mutated version with a fresh clone of the original
+    addons[currentIndex] = structuredClone(pristineAddon);
+    renderList();
+    markChanged();
+    toast('Cinemeta restored to default settings', 'success');
+  } else {
+    toast('Could not find original Cinemeta data to restore.', 'error');
   }
 
   closeModal('cinemetaModal');
