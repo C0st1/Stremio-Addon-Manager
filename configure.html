@@ -934,8 +934,14 @@ document.querySelectorAll('#groupCtrl button').forEach(btn => {
   });
 });
 
-// ─── Search ───────────────────────────────────────────────────────
-$('searchInput').addEventListener('input', () => applyFilter());
+// ─── Search (Debounced) ───────────────────────────────────────────
+let searchTimeout;
+$('searchInput').addEventListener('input', () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    applyFilter();
+  }, 150); // Waits 150ms after typing stops before filtering
+});
 
 // ─── Refresh ─────────────────────────────────────────────────────
 $('btnRefresh').addEventListener('click', loadAddons);
@@ -1022,7 +1028,12 @@ function renderList() {
 
 function renderFlat() {
   addonList.innerHTML = '';
-  addons.forEach((addon, idx) => addonList.appendChild(buildCard(addon, idx)));
+  // Batch DOM manipulations to prevent UI freezing
+  const fragment = document.createDocumentFragment();
+  addons.forEach((addon, idx) => {
+    fragment.appendChild(buildCard(addon, idx));
+  });
+  addonList.appendChild(fragment);
   initSortable(addonList);
 }
 
