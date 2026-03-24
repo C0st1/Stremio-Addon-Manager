@@ -725,6 +725,35 @@ input.danger-toggle:checked + .slider { background-color: var(--danger); border-
 
 <div id="toast"></div>
 
+<div class="modal-backdrop" id="backupModal">
+  <div class="modal">
+    <h2>📦 Backup & Restore</h2>
+    <p>Export your current addon list as JSON, or select a backup file to restore it.</p>
+    <label>Export / Import JSON</label>
+    <textarea id="backupText" rows="8" placeholder="Your addon collection JSON will appear here…"></textarea>
+    <div class="modal-actions">
+      <input type="file" id="backupFileInput" accept=".json" style="display: none;" />
+      <button class="btn btn-ghost" id="btnUploadBackup">⬆ Upload File</button>
+      
+      <button class="btn btn-ghost" id="btnCopyBackup">Copy</button>
+      <button class="btn btn-ghost" id="btnDownloadBackup">⬇ Download</button>
+      <button class="btn btn-primary" id="btnRestoreBackup">↩ Restore</button>
+      <button class="btn btn-ghost" onclick="closeModal('backupModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="confirmModal">
+  <div class="modal">
+    <h2 id="confirmTitle">Are you sure?</h2>
+    <p id="confirmBody"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="confirmCancel">Cancel</button>
+      <button class="btn btn-danger" id="confirmOk">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="cinemetaModal">
   <div class="modal">
     <h2>⚙️ Cinemeta Granular Control</h2>
@@ -771,17 +800,6 @@ input.danger-toggle:checked + .slider { background-color: var(--danger); border-
     <div class="modal-actions" style="margin-top: 20px;">
       <button class="btn btn-ghost" onclick="closeModal('cinemetaModal')">Cancel</button>
       <button class="btn btn-primary" id="btnApplyCinemeta">Apply Changes</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-backdrop" id="confirmModal">
-  <div class="modal">
-    <h2 id="confirmTitle">Are you sure?</h2>
-    <p id="confirmBody"></p>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" id="confirmCancel">Cancel</button>
-      <button class="btn btn-danger" id="confirmOk">Confirm</button>
     </div>
   </div>
 </div>
@@ -1092,7 +1110,7 @@ function buildCard(addon, idx) {
       
       ${isProtected ? '' : `<button class="btn-icon danger remove" title="Remove addon" data-url="${escHtml(url)}" data-name="${escHtml(name)}">🗑</button>`}
     </div>`;
-   
+
   // Standard movement & pinning listeners
   card.querySelector('.pin').addEventListener('click', e => { e.stopPropagation(); togglePin(url); });
   
