@@ -11,7 +11,7 @@ const path = require('path');
 module.exports = (req, res) => {
   const proto   = req.headers['x-forwarded-proto'] || 'https';
   const host    = req.headers['x-forwarded-host']  || req.headers.host;
-  const baseUrl = `${proto}://${host}`;
+  const baseUrl = process.env.API_BASE || `${proto}://${host}`;
 
   const htmlPath = path.join(__dirname, '..', 'configure.html');
   let html;
