@@ -37,6 +37,10 @@ module.exports = async (req, res) => {
     const checks = await Promise.all(
       addons.map(async addon => {
         const url = addon.transportUrl || addon?.manifest?.transportUrl || '';
+        const addonId = (addon?.manifest?.id || addon?.id || '').toLowerCase();
+        if (addonId === 'org.stremio.local' || addonId === 'local') {
+          return { url, ok: true, status: null, skipped: true };
+        }
         const result = await pingUrl(url);
         return { url, ...result };
       })
