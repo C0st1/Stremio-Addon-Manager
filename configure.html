@@ -1051,11 +1051,17 @@ async function loadAddons() {
    RENDER LIST
 ═══════════════════════════════════════════════════════════════════ */
 function renderList() {
-   if (typeof Sortable === 'undefined') {
+  // 1. First, wait for the library to be ready
+  if (typeof Sortable === 'undefined') {
     console.log('Sortable not ready yet, retrying in 100ms...');
     setTimeout(renderList, 100);
     return;
   }
+
+  // 2. Clear the "Fetching..." spinner immediately once Sortable is ready
+  addonList.innerHTML = ''; 
+
+  // 3. Handle the empty state
   if (!addons.length) {
     addonList.innerHTML = `<div class="status-panel" id="emptyState">
       <div class="icon">🔌</div><h3>No addons loaded</h3>
@@ -1065,6 +1071,7 @@ function renderList() {
     return;
   }
 
+  // 4. If we have addons, continue to render
   if (sortable) { try { sortable.destroy(); } catch(e){} sortable = null; }
   updateStats();
 
