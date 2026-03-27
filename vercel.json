@@ -8,6 +8,7 @@
     { "src": "/api/addons/set",  "dest": "/api/addons/set.js" },
     { "src": "/api/addons/check-links", "dest": "/api/addons/check-links.js" },
     { "src": "/api/login",       "dest": "/api/login.js" },
+    { "src": "/api/session",     "dest": "/api/session.js" },
     { "src": "/manifest.webmanifest", "dest": "/manifest.webmanifest" },
     { "src": "/sw.js", "dest": "/sw.js" },
     { "src": "/",                "dest": "/api/configure.js" }

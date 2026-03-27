@@ -660,8 +660,8 @@ input.danger-toggle:checked + .slider { background-color: var(--danger); border-
       <p>Reorder, organize, and manage your Stremio addons</p>
     </div>
     <div class="header-actions">
-      <button class="btn btn-ghost" id="btnThemeToggle" title="Toggle theme">Theme</button>
-      <button class="btn btn-ghost" id="btnCheckLinks" title="Detect broken addon links">Check Links</button>
+      <button class="btn btn-ghost" id="btnThemeToggle" title="Toggle light/dark mode">🌓 Appearance</button>
+      <button class="btn btn-ghost" id="btnCheckLinks" title="Detect broken addon links">🩺 Link Health</button>
       <button class="btn btn-ghost" id="btnBackup" title="Backup / Restore">📦 Backup</button>
       <button class="btn btn-ghost" id="btnRefresh" title="Reload addons from Stremio">↻ Refresh</button>
     </div>
@@ -719,7 +719,7 @@ input.danger-toggle:checked + .slider { background-color: var(--danger); border-
     <div class="status-panel" id="emptyState">
       <div class="icon">🔌</div>
       <h3>No addons loaded</h3>
-      <p>Enter your Auth Key above, then click <strong>Load Addons</strong>.</p>
+      <p>Login or paste your Auth Key above, then click <strong>Load Addons</strong>.</p>
       <br/>
       <button class="btn btn-primary" onclick="loadAddons()">Load Addons</button>
     </div>
@@ -848,6 +848,9 @@ const addonList = $('addonList');
 // ─── LocalStorage & Auto-Refresh for Auth Key ─────────────────────
 const savedKey = localStorage.getItem('stremioAuthKey');
 if (savedKey) $('authKeyInput').value = savedKey;
+if (savedKey && savedKey.length > 20) {
+  bindSessionFromKey(savedKey).catch(() => {});
+}
 
 let authKeyTimeout;
 $('authKeyInput').addEventListener('input', (e) => {
@@ -860,7 +863,7 @@ $('authKeyInput').addEventListener('input', (e) => {
   // If the input looks like a valid auth key (usually 40+ characters), auto-load
   if (val.length > 20) {
     authKeyTimeout = setTimeout(() => {
-      loadAddons();
+      bindSessionFromKey(val).then(loadAddons).catch(err => toast(err.message, 'error'));
     }, 600); // Wait 600ms after they finish pasting/typing to prevent spamming
   } else if (val.length === 0) {
     // Optional: Clear the list if they delete the key
@@ -869,6 +872,17 @@ $('authKeyInput').addEventListener('input', (e) => {
     $('authIndicator').classList.remove('connected');
   }
 });
+
+async function bindSessionFromKey(authKey) {
+  const res = await fetch(`${API_BASE}/api/session`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ authKey }),
+  });
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'Could not start session');
+}
 
 // ─── Login / Auth Mode Toggling ───────────────────────────────────
 document.querySelectorAll('#authModeCtrl button').forEach(btn => {
@@ -934,7 +948,7 @@ $('btnDoLogin').addEventListener('click', async () => {
 // Handle Logout
 $('btnLogout').addEventListener('click', async () => {
   try {
-    await fetch(`${API_BASE}/api/login`, {
+    await fetch(`${API_BASE}/api/session`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -1011,8 +1025,6 @@ $('btnDiscard').addEventListener('click', () => {
    LOAD ADDONS (OPTIMIZED DIRECT-TO-STREMIO)
 ═══════════════════════════════════════════════════════════════════ */
 async function loadAddons() {
-  const authKey = $('authKeyInput').value.trim();
-
   addonList.innerHTML = `<div class="status-panel">
     <div class="spinner" style="width:36px;height:36px;border-width:3px;margin:0 auto 16px"></div>
     <p>Fetching your addon collection from Cloud…</p>
@@ -1024,7 +1036,7 @@ async function loadAddons() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ authKey })
+      body: JSON.stringify({})
     });
     const data = await res.json();
 
@@ -1266,15 +1278,13 @@ function removeAddon(url) {
    SAVE ADDONS
 ═══════════════════════════════════════════════════════════════════ */
 async function saveAddons() {
-  const authKey = $('authKeyInput').value.trim();
-
   $('saveBtnText').textContent = 'Saving…';
   $('saveSpinner').style.display = 'inline-block';
   $('btnSave').disabled = true;
 
   try {
     const saveAddonsList = addons.filter(a => !disabledAddons.has(a.transportUrl || a.manifest?.transportUrl));
-    let payload = { authKey, addons: saveAddonsList };
+    let payload = { addons: saveAddonsList };
     if (window.CompressionStream) payload = await buildCompressedPayload(payload);
 
     const res = await fetch(`${API_BASE}/api/addons/set`, {
@@ -1437,9 +1447,8 @@ async function apiFetch(path, body) {
 }
 
 async function runBrokenLinkCheck() {
-  if (!$('authKeyInput').value.trim()) { toast('Enter auth key first', 'warning'); return; }
   try {
-    const res = await apiFetch('/api/addons/check-links', { authKey: $('authKeyInput').value.trim() });
+    const res = await apiFetch('/api/addons/check-links', {});
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || 'Link check failed');
     addonHealth.clear();
@@ -1452,14 +1461,14 @@ async function runBrokenLinkCheck() {
   }
 }
 
-async function buildCompressedPayload({ authKey, addons }) {
+async function buildCompressedPayload({ addons }) {
   const input = new TextEncoder().encode(JSON.stringify(addons));
   const stream = new Blob([input]).stream().pipeThrough(new CompressionStream('gzip'));
   const compressed = await new Response(stream).arrayBuffer();
   const bytes = new Uint8Array(compressed);
   let binary = '';
   for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
-  return { authKey, compressedAddons: btoa(binary), compression: 'gzip' };
+  return { compressedAddons: btoa(binary), compression: 'gzip' };
 }
 function escHtml(s) { return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
@@ -1479,10 +1488,10 @@ $('confirmCancel').addEventListener('click', () => { closeModal('confirmModal');
   if (typeof Sortable === 'undefined' || !Sortable.create) {
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js';
-    s.onload = () => { if($('authKeyInput').value) loadAddons(); };
-    s.onerror = () => { window.Sortable = { create: () => ({ destroy: () => {} }) }; toast('Drag-and-drop failed to load. Please refresh the page.', 'error'); if($('authKeyInput').value) loadAddons(); };
+    s.onload = () => { loadAddons(); };
+    s.onerror = () => { window.Sortable = { create: () => ({ destroy: () => {} }) }; toast('Drag-and-drop failed to load. Please refresh the page.', 'error'); loadAddons(); };
     document.head.appendChild(s);
-  } else if($('authKeyInput').value) {
+  } else {
     loadAddons();
   }
 })();
