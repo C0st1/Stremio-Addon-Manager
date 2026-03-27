@@ -4,7 +4,15 @@
  */
 const stremioAPI = require('../lib/stremioAPI');
 
+const { Ratelimit } = require("@upstash/ratelimit");
+const { Redis } = require("@upstash/redis");
+const redis = Redis.fromEnv();
+const ratelimit = new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5, "1 m") });
+
 module.exports = async (req, res) => {
+  const ip = req.headers["x-real-ip"] || "127.0.0.1";
+  const { success } = await ratelimit.limit(ip);
+  if (!success) return res.status(429).json({ ok: false, error: "Rate limit exceeded. Try again later." });
   // Handle CORS pre-flight
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
