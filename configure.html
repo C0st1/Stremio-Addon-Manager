@@ -840,10 +840,16 @@ let pinned      = new Set();
 let groupMode   = 'none';    
 let sortable    = null;      
 let disabledAddons = new Set(JSON.parse(localStorage.getItem('disabledAddons') || '[]'));
+let disabledAddonStore = JSON.parse(localStorage.getItem('disabledAddonStore') || '{}');
 const addonHealth = new Map();
 
 const $ = id => document.getElementById(id);
 const addonList = $('addonList');
+
+function persistDisabledState() {
+  localStorage.setItem('disabledAddons', JSON.stringify([...disabledAddons]));
+  localStorage.setItem('disabledAddonStore', JSON.stringify(disabledAddonStore));
+}
 
 // ─── LocalStorage & Auto-Refresh for Auth Key ─────────────────────
 const savedKey = localStorage.getItem('stremioAuthKey');
@@ -1011,6 +1017,8 @@ initTheme();
 $('btnSave').addEventListener('click', saveAddons);
 $('btnDiscard').addEventListener('click', () => {
   addons = JSON.parse(JSON.stringify(original));
+  disabledAddons = new Set(Object.keys(disabledAddonStore));
+  persistDisabledState();
   pinned.clear();
   renderList();
   hideSaveBar();
@@ -1040,10 +1048,15 @@ async function loadAddons() {
     const data = await res.json();
 
     if (!data.ok) throw new Error(data.error || 'Unknown error');
-    addons = data.addons || [];
-    const existingUrls = new Set(addons.map(a => a.transportUrl || a.manifest?.transportUrl).filter(Boolean));
-    disabledAddons = new Set([...disabledAddons].filter(url => existingUrls.has(url)));
-    localStorage.setItem('disabledAddons', JSON.stringify([...disabledAddons]));
+    const cloudAddons = data.addons || [];
+    const cloudUrls = new Set(cloudAddons.map(a => a.transportUrl || a.manifest?.transportUrl).filter(Boolean));
+    const merged = [...cloudAddons];
+    for (const [url, addon] of Object.entries(disabledAddonStore)) {
+      if (!cloudUrls.has(url)) merged.push(addon);
+    }
+    addons = merged;
+    disabledAddons = new Set(Object.keys(disabledAddonStore));
+    persistDisabledState();
     addonHealth.clear();
     original = JSON.parse(JSON.stringify(addons));
 
@@ -1259,11 +1272,20 @@ function togglePin(url) {
 }
 
 function toggleAddonDisabled(url) {
-  if (disabledAddons.has(url)) disabledAddons.delete(url);
-  else disabledAddons.add(url);
-  localStorage.setItem('disabledAddons', JSON.stringify([...disabledAddons]));
+  if (disabledAddons.has(url)) {
+    disabledAddons.delete(url);
+    delete disabledAddonStore[url];
+  } else {
+    const addon = addons.find(a => (a.transportUrl || a.manifest?.transportUrl) === url);
+    if (addon) {
+      disabledAddons.add(url);
+      disabledAddonStore[url] = addon;
+    }
+  }
+  persistDisabledState();
   renderList();
-  toast(disabledAddons.has(url) ? 'Addon temporarily disabled on this device' : 'Addon re-enabled on this device', 'info');
+  markChanged();
+  toast(disabledAddons.has(url) ? 'Addon disabled (click Save to apply in Stremio)' : 'Addon re-enabled (click Save to apply in Stremio)', 'info');
 }
 
 function confirmRemove(url, name) {
@@ -1285,7 +1307,8 @@ async function saveAddons() {
   $('btnSave').disabled = true;
 
   try {
-    let payload = { addons };
+    const activeAddons = addons.filter(a => !disabledAddons.has(a.transportUrl || a.manifest?.transportUrl));
+    let payload = { addons: activeAddons };
     if (window.CompressionStream) payload = await buildCompressedPayload(payload);
 
     const res = await fetch(`${API_BASE}/api/addons/set`, {
@@ -1300,6 +1323,13 @@ async function saveAddons() {
     if (!data.ok) throw new Error(data.error || 'Save failed');
 
     original = JSON.parse(JSON.stringify(addons));
+    const nextStore = {};
+    disabledAddons.forEach(url => {
+      const addon = addons.find(a => (a.transportUrl || a.manifest?.transportUrl) === url);
+      if (addon) nextStore[url] = addon;
+    });
+    disabledAddonStore = nextStore;
+    persistDisabledState();
     hideSaveBar();
     toast('✓ Addon order saved!', 'success');
   } catch (err) {
@@ -1397,7 +1427,7 @@ function markChanged() {
 }
 
 function changesCount() {
-  if (addons.length !== original.length) return Math.abs(addons.length - original.length);
+  if (addons.length !== original.length) return Math.abs(addons.length - original.length) + disabledAddons.size;
   
   let diff = 0;
   addons.forEach((a, i) => { 
@@ -1411,7 +1441,7 @@ function changesCount() {
     }
   });
   
-  return diff;
+  return diff + disabledAddons.size;
 }
 
 function showSaveBar() { $('saveBar').classList.add('visible'); }
