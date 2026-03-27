@@ -3,15 +3,22 @@ const { cloudGetAddons } = require('../../lib/stremioAPI');
 
 async function pingUrl(url) {
   if (!url || typeof url !== 'string') return { ok: false, status: null };
+  if (!/^https?:\/\//i.test(url)) {
+    return { ok: true, status: null, skipped: true };
+  }
 
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 5000);
     const res = await fetch(url, { method: 'HEAD', redirect: 'follow', signal: controller.signal });
     clearTimeout(timer);
-    return { ok: res.ok, status: res.status };
+    if (res.status === 405 || res.status === 501) {
+      // Some addon hosts do not allow HEAD but are still healthy.
+      return { ok: true, status: res.status, skipped: true };
+    }
+    return { ok: res.ok, status: res.status, skipped: false };
   } catch {
-    return { ok: false, status: null };
+    return { ok: false, status: null, skipped: false };
   }
 }
 
