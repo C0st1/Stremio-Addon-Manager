@@ -1,0 +1,16 @@
+{
+  "name": "Stremio Addon Manager",
+  "short_name": "AddonMgr",
+  "description": "Manage and reorder your Stremio addons.",
+  "icons": [
+    {
+      "src": "https://www.stremio.com/website/stremio-logo-small.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "/configure",
+  "display": "standalone",
+  "theme_color": "#07070f",
+  "background_color": "#07070f"
+}
