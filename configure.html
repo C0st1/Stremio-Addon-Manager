@@ -1463,6 +1463,8 @@ function buildCard(addon, idx) {
   const iconHtml = logo ? `<img src="${escHtml(logo)}" alt="" onerror="this.parentNode.innerHTML='🔌'" loading="lazy"/>` : `<span class="addon-icon-placeholder">🔌</span>`;
   const allRes   = [...new Set([...types, ...res.map(r => typeof r === 'string' ? r : r.name || '')])];
   const tagHtml  = allRes.slice(0, 4).map(t => `<span class="tag ${tagClass(t)}">${escHtml(t)}</span>`).join('');
+  const iconPowerOn = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>`;
+  const iconPowerOff = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 0 1 2.5 8.04"/><path d="M20.66 20.66A9 9 0 0 1 5.64 5.64"/><line x1="12" y1="2" x2="12" y2="12"/><line x1="2" y1="2" x2="22" y2="22"/></svg>`;
 
   card.innerHTML = `
     <span class="order-badge">${idx + 1}</span>
@@ -1481,7 +1483,7 @@ function buildCard(addon, idx) {
     </div>
     <div class="card-actions">
       <button class="btn-icon pin ${isPinned ? 'pinned' : ''}" title="${isPinned ? 'Unpin' : 'Pin to top'}" data-url="${escHtml(url)}">📌</button>
-      <button class="btn-icon toggle-vis ${isDisabled ? 'disabled-addon' : ''}" title="${isDisabled ? 'Enable addon' : 'Temporarily disable addon'}" data-url="${escHtml(url)}">${isDisabled ? '🙈' : '👁️'}</button>
+      <button class="btn-icon toggle-vis ${isDisabled ? 'disabled-addon' : ''}" title="${isDisabled ? 'Enable addon' : 'Temporarily disable addon'}" data-url="${escHtml(url)}">${isDisabled ? iconPowerOff : iconPowerOn}</button>
       
       <button class="btn-icon copy-url" title="Copy manifest URL" data-url="${escHtml(url)}">🔗</button>
       ${isConfigurable ? `<button class="btn-icon config-addon" title="Configure addon" data-url="${escHtml(url)}">⚙️</button>` : ''}
