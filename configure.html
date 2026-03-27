@@ -840,6 +840,7 @@ let pinned      = new Set();
 let groupMode   = 'none';    
 let sortable    = null;      
 let disabledAddons = new Set(JSON.parse(localStorage.getItem('disabledAddons') || '[]'));
+let originalDisabledAddons = new Set();
 let disabledAddonStore = JSON.parse(localStorage.getItem('disabledAddonStore') || '{}');
 let disabledAddonPositions = JSON.parse(localStorage.getItem('disabledAddonPositions') || '{}');
 const addonHealth = new Map();
@@ -1019,7 +1020,7 @@ initTheme();
 $('btnSave').addEventListener('click', saveAddons);
 $('btnDiscard').addEventListener('click', () => {
   addons = JSON.parse(JSON.stringify(original));
-  disabledAddons = new Set(Object.keys(disabledAddonStore));
+  disabledAddons = new Set(originalDisabledAddons);
   persistDisabledState();
   pinned.clear();
   renderList();
@@ -1063,6 +1064,7 @@ async function loadAddons() {
     }
     addons = merged;
     disabledAddons = new Set(Object.keys(disabledAddonStore));
+    originalDisabledAddons = new Set(disabledAddons);
     persistDisabledState();
     addonHealth.clear();
     original = JSON.parse(JSON.stringify(addons));
@@ -1356,6 +1358,7 @@ async function saveAddons() {
     });
     disabledAddonStore = nextStore;
     disabledAddonPositions = nextPositions;
+    originalDisabledAddons = new Set(disabledAddons);
     persistDisabledState();
     hideSaveBar();
     toast('✓ Addon order saved!', 'success');
@@ -1454,7 +1457,10 @@ function markChanged() {
 }
 
 function changesCount() {
-  if (addons.length !== original.length) return Math.abs(addons.length - original.length) + disabledAddons.size;
+  const disabledDelta =
+    [...disabledAddons].filter(url => !originalDisabledAddons.has(url)).length +
+    [...originalDisabledAddons].filter(url => !disabledAddons.has(url)).length;
+  if (addons.length !== original.length) return Math.abs(addons.length - original.length) + disabledDelta;
   
   let diff = 0;
   addons.forEach((a, i) => { 
@@ -1468,7 +1474,7 @@ function changesCount() {
     }
   });
   
-  return diff + disabledAddons.size;
+  return diff + disabledDelta;
 }
 
 function showSaveBar() { $('saveBar').classList.add('visible'); }
