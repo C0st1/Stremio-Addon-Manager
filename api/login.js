@@ -33,6 +33,10 @@ module.exports = async (req, res) => {
 
   try {
     const authKey = await stremioAPI.cloudLogin(email, password);
+    const cookie = require('cookie');
+    res.setHeader('Set-Cookie', cookie.serialize('stremioAuth', authKey, {
+      httpOnly: true, secure: true, maxAge: 60 * 60 * 24 * 7, path: '/'
+    }));
     res.status(200).json({ ok: true, authKey });
   } catch (err) {
     console.error('[LOGIN]', err.message);
