@@ -1211,6 +1211,9 @@ function buildCard(addon, idx) {
 function initSortable(container) {
   sortable = new Sortable(container, {
     animation: 200, handle: '.drag-handle', ghostClass: 'dragging', chosenClass: 'dragging', dragClass: 'dragging', filter: '.pinned-addon',
+    scroll: true,
+    scrollSensitivity: 60, // px from edge to start scrolling
+    scrollSpeed: 15,       // px per frame
     onStart: e => e.item.classList.add('dragging'),
     onEnd: e => { e.item.classList.remove('dragging'); syncOrderFromDOM(); markChanged(); },
   });
