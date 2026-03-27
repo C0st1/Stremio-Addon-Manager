@@ -625,6 +625,11 @@ input.danger-toggle:checked + .slider { background-color: var(--danger); border-
 .warning-box h4 { color: var(--danger); font-size: .85rem; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
 .warning-box p { color: var(--text-pri); font-size: .78rem; opacity: 0.9; }
 @keyframes fade-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+body.light-mode {
+  --bg-deep: #f0f0f5; --bg-card: #ffffff; --bg-panel: #f8f8fb;
+  --bg-hover: #e8e8f0; --border: #d0d0e0; --text-pri: #1a1a2e;
+  --text-sec: #4a4a6a; --text-dim: #8a88aa; --drag-bg: #ffffff;
+}
 </style>
 <!-- SortableJS for drag-and-drop (inline CDN — bundled locally for offline use) -->
 <script>
@@ -643,6 +648,7 @@ input.danger-toggle:checked + .slider { background-color: var(--danger); border-
     </div>
     <div class="header-actions">
       <button class="btn btn-ghost" id="btnBackup" title="Backup / Restore">📦 Backup</button>
+      <button class="btn btn-ghost" id="btnThemeToggle">☀️ Theme</button>
       <button class="btn btn-ghost" id="btnRefresh" title="Reload addons from Stremio">↻ Refresh</button>
     </div>
   </div>
@@ -823,6 +829,12 @@ let sortable    = null;
 const $ = id => document.getElementById(id);
 const addonList = $('addonList');
 
+if (localStorage.getItem('theme') === 'light') document.body.classList.add('light-mode');
+$('btnThemeToggle').addEventListener('click', () => {
+  document.body.classList.toggle('light-mode');
+  localStorage.setItem('theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+});
+
 // ─── LocalStorage & Auto-Refresh for Auth Key ─────────────────────
 const savedKey = localStorage.getItem('stremioAuthKey');
 if (savedKey) $('authKeyInput').value = savedKey;
@@ -948,6 +960,22 @@ $('btnRefresh').addEventListener('click', loadAddons);
 
 // ─── Backup ───────────────────────────────────────────────────────
 $('btnBackup').addEventListener('click', openBackupModal);
+
+// ─── Check Links ───────────────────────────────────────────────────────
+
+$('btnCheckLinks').addEventListener('click', async () => {
+  toast('Checking links... this may take a minute.', 'info');
+  for (let card of addonList.querySelectorAll('.addon-card')) {
+    const url = card.dataset.url;
+    try {
+      const res = await fetch(url.replace('stremio://', 'https://'), { method: 'HEAD' });
+      if (!res.ok) card.style.border = '1px solid var(--danger)';
+    } catch (e) {
+      card.style.border = '1px solid var(--danger)';
+    }
+  }
+  toast('Check complete. Broken links are red.', 'warning');
+});
 
 // ─── Save / Discard ───────────────────────────────────────────────
 $('btnSave').addEventListener('click', saveAddons);
@@ -1119,6 +1147,7 @@ function buildCard(addon, idx) {
       <button class="btn-icon pin ${isPinned ? 'pinned' : ''}" title="${isPinned ? 'Unpin' : 'Pin to top'}" data-url="${escHtml(url)}">📌</button>
       
       <button class="btn-icon copy-url" title="Copy manifest URL" data-url="${escHtml(url)}">🔗</button>
+      <button class="btn-icon toggle-addon" title="Toggle Enable/Disable" data-url="${escHtml(url)}">${addon._disabled ? '🚫' : '✅'}</button>
       ${isConfigurable ? `<button class="btn-icon config-addon" title="Configure addon" data-url="${escHtml(url)}">⚙️</button>` : ''}
       
       ${addonId.includes('cinemeta') ? `<button class="btn-icon cinemeta-config" title="Cinemeta Advanced Settings" data-url="${escHtml(url)}">🎛️</button>` : ''}
@@ -1135,6 +1164,14 @@ function buildCard(addon, idx) {
     navigator.clipboard.writeText(url)
       .then(() => toast('Manifest URL copied!', 'success'))
       .catch(() => toast('Copy failed', 'error'));
+  });
+
+ // New Toogle listener
+ card.querySelector('.toggle-addon').addEventListener('click', e => {
+    e.stopPropagation();
+    addon._disabled = !addon._disabled;
+    renderList();
+    markChanged();
   });
 
   // New Configure listener (only bound if the addon is configurable)
@@ -1217,10 +1254,11 @@ async function saveAddons() {
   try {
     // FAST BYPASS: Hit Stremio directly instead of bouncing through Vercel
     // This eliminates serverless cold-starts and halves the network latency
+    const activeAddons = addons.filter(a => !a._disabled);
     const res = await fetch('https://api.strem.io/api/addonCollectionSet', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ authKey, addons, type: 'AddonCollectionSet' }),
+      body: JSON.stringify({ authKey, addons: activeAddons, type: 'AddonCollectionSet' }),
     });
     
     const data = await res.json();
