@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#07070f" />
+<link rel="manifest" href="/manifest.webmanifest" />
 <title>Stremio Addon Manager</title>
 <style>
 /* ═══════════════════════════════════════════════════════
@@ -34,6 +36,19 @@
   --shadow:      0 4px 24px #00000066;
   --font-sans:   'DM Sans', 'Segoe UI', system-ui, sans-serif;
   --font-mono:   'JetBrains Mono', 'Fira Code', monospace;
+}
+
+body.light-theme {
+  --bg-deep: #f5f6fb;
+  --bg-card: #ffffff;
+  --bg-panel: #f0f2ff;
+  --bg-hover: #e9ecff;
+  --border: #d7dcef;
+  --border-glow: #7c5cbf33;
+  --text-pri: #17172a;
+  --text-sec: #4b4f6d;
+  --text-dim: #73779a;
+  --drag-bg: #e6e8f7;
 }
 
 html { font-size: 15px; scroll-behavior: smooth; }
@@ -198,6 +213,9 @@ body {
 .btn-icon.danger:hover { color: var(--danger); border-color: var(--danger); background: #cf4f5b11; }
 .btn-icon.pin.pinned { color: var(--pin-color); border-color: var(--pin-color); background: #cfaa4f11; }
 .btn-icon.toggle-vis.disabled-addon { color: var(--text-dim); }
+.link-status-ok { color: var(--success); font-size: .75rem; }
+.link-status-bad { color: var(--danger); font-size: .75rem; }
+.protected-lock { color: var(--warning); font-size: .72rem; }
 
 /* ═══════════════════════════════════════════════════════
    SECTION HEADER (category labels)
@@ -642,6 +660,8 @@ input.danger-toggle:checked + .slider { background-color: var(--danger); border-
       <p>Reorder, organize, and manage your Stremio addons</p>
     </div>
     <div class="header-actions">
+      <button class="btn btn-ghost" id="btnThemeToggle" title="Toggle theme">Theme</button>
+      <button class="btn btn-ghost" id="btnCheckLinks" title="Detect broken addon links">Check Links</button>
       <button class="btn btn-ghost" id="btnBackup" title="Backup / Restore">📦 Backup</button>
       <button class="btn btn-ghost" id="btnRefresh" title="Reload addons from Stremio">↻ Refresh</button>
     </div>
@@ -819,6 +839,8 @@ let original    = [];
 let pinned      = new Set(); 
 let groupMode   = 'none';    
 let sortable    = null;      
+let disabledAddons = new Set();
+const addonHealth = new Map();
 
 const $ = id => document.getElementById(id);
 const addonList = $('addonList');
@@ -887,19 +909,17 @@ $('btnDoLogin').addEventListener('click', async () => {
   btn.disabled = true; btn.textContent = 'Logging in...';
 
   try {
-    // FAST BYPASS: Login directly against Stremio
-    const res = await fetch('https://api.strem.io/api/login', {
+    const res = await fetch(`${API_BASE}/api/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ email, password, type: 'Login' })
     });
     const data = await res.json();
-    
-    if (data.error) throw new Error(data.error.message || 'Login failed');
-    if (!data.result || !data.result.authKey) throw new Error('No auth key returned');
-    
-    $('authKeyInput').value = data.result.authKey;
-    localStorage.setItem('stremioAuthKey', data.result.authKey);
+
+    if (!data.ok || !data.authKey) throw new Error(data.error || 'Login failed');
+    $('authKeyInput').value = data.authKey;
+    localStorage.setItem('stremioAuthKey', data.authKey);
     $('passwordInput').value = ''; 
     updateLoginUI();
     toast('Login successful!', 'success');
@@ -912,7 +932,15 @@ $('btnDoLogin').addEventListener('click', async () => {
 });
 
 // Handle Logout
-$('btnLogout').addEventListener('click', () => {
+$('btnLogout').addEventListener('click', async () => {
+  try {
+    await fetch(`${API_BASE}/api/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ logout: true }),
+    });
+  } catch {}
   $('authKeyInput').value = '';
   localStorage.removeItem('stremioAuthKey');
   addons = [];
@@ -945,14 +973,31 @@ $('searchInput').addEventListener('input', () => {
 
 // ─── Refresh ─────────────────────────────────────────────────────
 $('btnRefresh').addEventListener('click', loadAddons);
+$('btnThemeToggle').addEventListener('click', toggleTheme);
+$('btnCheckLinks').addEventListener('click', runBrokenLinkCheck);
 
 // ─── Backup ───────────────────────────────────────────────────────
 $('btnBackup').addEventListener('click', openBackupModal);
+
+function initTheme() {
+  const stored = localStorage.getItem('addonManagerTheme');
+  const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+  const mode = stored || (prefersLight ? 'light' : 'dark');
+  document.body.classList.toggle('light-theme', mode === 'light');
+}
+
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light-theme');
+  localStorage.setItem('addonManagerTheme', isLight ? 'light' : 'dark');
+}
+
+initTheme();
 
 // ─── Save / Discard ───────────────────────────────────────────────
 $('btnSave').addEventListener('click', saveAddons);
 $('btnDiscard').addEventListener('click', () => {
   addons = JSON.parse(JSON.stringify(original));
+  disabledAddons.clear();
   pinned.clear();
   renderList();
   hideSaveBar();
@@ -967,7 +1012,6 @@ $('btnDiscard').addEventListener('click', () => {
 ═══════════════════════════════════════════════════════════════════ */
 async function loadAddons() {
   const authKey = $('authKeyInput').value.trim();
-  if (!authKey) { toast('Please enter your Stremio Auth Key first.', 'warning'); return; }
 
   addonList.innerHTML = `<div class="status-panel">
     <div class="spinner" style="width:36px;height:36px;border-width:3px;margin:0 auto 16px"></div>
@@ -976,17 +1020,18 @@ async function loadAddons() {
   $('statsBar').style.display = 'none';
 
   try {
-    // FAST BYPASS: Fetch directly from Stremio API
-    const res = await fetch('https://api.strem.io/api/addonCollectionGet', {
+    const res = await fetch(`${API_BASE}/api/addons/get`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ authKey, type: 'AddonCollectionGet' })
+      credentials: 'include',
+      body: JSON.stringify({ authKey })
     });
     const data = await res.json();
 
-    if (data.error) throw new Error(data.error.message || 'Unknown error');
-
-    addons = data.result?.addons || data.addons || [];
+    if (!data.ok) throw new Error(data.error || 'Unknown error');
+    addons = data.addons || [];
+    disabledAddons.clear();
+    addonHealth.clear();
     original = JSON.parse(JSON.stringify(addons));
 
     $('authIndicator').classList.add('connected');
@@ -1077,6 +1122,7 @@ function buildCard(addon, idx) {
   const res     = man.resources || [];
 
   const isPinned   = pinned.has(url);
+  const isDisabled = disabledAddons.has(url);
 
 // Safely get the ID, defaulting to an empty string if it's missing
   const addonId = (man.id || '').toLowerCase();
@@ -1091,8 +1137,10 @@ function buildCard(addon, idx) {
   // Check if the addon has a configuration page
   const isConfigurable = man.behaviorHints?.configurable === true;
 
+  const health = addonHealth.get(url);
+  const healthHtml = health == null ? '' : health ? '<span class="link-status-ok" title="Transport URL reachable">●</span>' : '<span class="link-status-bad" title="Transport URL appears unavailable">●</span>';
   const card = document.createElement('div');
-  card.className = 'addon-card' + (isPinned ? ' pinned-addon' : '');
+  card.className = 'addon-card' + (isPinned ? ' pinned-addon' : '') + (isDisabled ? ' disabled-addon' : '');
   card.dataset.url  = url; card.dataset.idx  = idx; card.dataset.name = name.toLowerCase();
   card.draggable    = false; 
 
@@ -1111,12 +1159,13 @@ function buildCard(addon, idx) {
     </div>
     <div class="addon-icon">${iconHtml}</div>
     <div class="addon-info">
-      <div class="addon-name">${escHtml(name)} <span class="addon-version">v${escHtml(version)}</span> ${isPinned ? '<span title="Pinned" style="color:var(--pin-color);font-size:.7rem">📌</span>' : ''}</div>
+      <div class="addon-name">${escHtml(name)} <span class="addon-version">v${escHtml(version)}</span> ${isPinned ? '<span title="Pinned" style="color:var(--pin-color);font-size:.7rem">📌</span>' : ''} ${isProtected ? '<span class="protected-lock" title="Core addon cannot be removed">🔒</span>' : ''} ${healthHtml}</div>
       <div class="addon-desc">${escHtml(desc)}</div>
       <div class="addon-tags">${tagHtml}</div>
     </div>
     <div class="card-actions">
       <button class="btn-icon pin ${isPinned ? 'pinned' : ''}" title="${isPinned ? 'Unpin' : 'Pin to top'}" data-url="${escHtml(url)}">📌</button>
+      <button class="btn-icon toggle-vis ${isDisabled ? 'disabled-addon' : ''}" title="${isDisabled ? 'Enable addon' : 'Temporarily disable addon'}" data-url="${escHtml(url)}">${isDisabled ? '🙈' : '👁️'}</button>
       
       <button class="btn-icon copy-url" title="Copy manifest URL" data-url="${escHtml(url)}">🔗</button>
       ${isConfigurable ? `<button class="btn-icon config-addon" title="Configure addon" data-url="${escHtml(url)}">⚙️</button>` : ''}
@@ -1128,6 +1177,7 @@ function buildCard(addon, idx) {
 
   // Standard movement & pinning listeners
   card.querySelector('.pin').addEventListener('click', e => { e.stopPropagation(); togglePin(url); });
+  card.querySelector('.toggle-vis').addEventListener('click', e => { e.stopPropagation(); toggleAddonDisabled(url); });
   
   // New Copy URL listener
   card.querySelector('.copy-url').addEventListener('click', e => {
@@ -1168,7 +1218,8 @@ function buildCard(addon, idx) {
 
 function initSortable(container) {
   sortable = new Sortable(container, {
-    animation: 200, handle: '.drag-handle', ghostClass: 'dragging', chosenClass: 'dragging', dragClass: 'dragging', filter: '.pinned-addon',
+    animation: 200, handle: '.drag-handle', ghostClass: 'dragging', chosenClass: 'dragging', dragClass: 'dragging', filter: '.pinned-addon, .disabled-addon',
+    scroll: true, bubbleScroll: true, scrollSensitivity: 120, scrollSpeed: 18,
     onStart: e => e.item.classList.add('dragging'),
     onEnd: e => { e.item.classList.remove('dragging'); syncOrderFromDOM(); markChanged(); },
   });
@@ -1194,6 +1245,13 @@ function togglePin(url) {
   renderList(); markChanged();
 }
 
+function toggleAddonDisabled(url) {
+  if (disabledAddons.has(url)) disabledAddons.delete(url);
+  else disabledAddons.add(url);
+  renderList();
+  markChanged();
+}
+
 function confirmRemove(url, name) {
   confirm_(`Remove "${name}"?`, `This will remove the addon from your collection. You can reinstall it later.`, () => removeAddon(url));
 }
@@ -1215,17 +1273,20 @@ async function saveAddons() {
   $('btnSave').disabled = true;
 
   try {
-    // FAST BYPASS: Hit Stremio directly instead of bouncing through Vercel
-    // This eliminates serverless cold-starts and halves the network latency
-    const res = await fetch('https://api.strem.io/api/addonCollectionSet', {
+    const saveAddonsList = addons.filter(a => !disabledAddons.has(a.transportUrl || a.manifest?.transportUrl));
+    let payload = { authKey, addons: saveAddonsList };
+    if (window.CompressionStream) payload = await buildCompressedPayload(payload);
+
+    const res = await fetch(`${API_BASE}/api/addons/set`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ authKey, addons, type: 'AddonCollectionSet' }),
+      credentials: 'include',
+      body: JSON.stringify(payload),
     });
     
     const data = await res.json();
 
-    if (data.error) throw new Error(data.error.message || 'Save failed');
+    if (!data.ok) throw new Error(data.error || 'Save failed');
 
     original = JSON.parse(JSON.stringify(addons));
     hideSaveBar();
@@ -1325,7 +1386,7 @@ function markChanged() {
 }
 
 function changesCount() {
-  if (addons.length !== original.length) return Math.abs(addons.length - original.length);
+  if (addons.length !== original.length) return Math.abs(addons.length - original.length) + disabledAddons.size;
   
   let diff = 0;
   addons.forEach((a, i) => { 
@@ -1339,7 +1400,7 @@ function changesCount() {
     }
   });
   
-  return diff;
+  return diff + disabledAddons.size;
 }
 
 function showSaveBar() { $('saveBar').classList.add('visible'); }
@@ -1366,7 +1427,40 @@ function tagClass(t) { return ['stream','catalog','meta','subtitles'].includes(t
 /* ═══════════════════════════════════════════════════════════════════
    HELPERS
 ═══════════════════════════════════════════════════════════════════ */
-async function apiFetch(path, body) { return fetch(API_BASE + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); }
+async function apiFetch(path, body) {
+  return fetch(API_BASE + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+}
+
+async function runBrokenLinkCheck() {
+  if (!$('authKeyInput').value.trim()) { toast('Enter auth key first', 'warning'); return; }
+  try {
+    const res = await apiFetch('/api/addons/check-links', { authKey: $('authKeyInput').value.trim() });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Link check failed');
+    addonHealth.clear();
+    data.checks.forEach(c => addonHealth.set(c.url, !!c.ok));
+    renderList();
+    const broken = data.checks.filter(c => !c.ok).length;
+    toast(broken ? `${broken} addon link(s) look broken` : 'All addon links look healthy', broken ? 'warning' : 'success');
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+async function buildCompressedPayload({ authKey, addons }) {
+  const input = new TextEncoder().encode(JSON.stringify(addons));
+  const stream = new Blob([input]).stream().pipeThrough(new CompressionStream('gzip'));
+  const compressed = await new Response(stream).arrayBuffer();
+  const bytes = new Uint8Array(compressed);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
+  return { authKey, compressedAddons: btoa(binary), compression: 'gzip' };
+}
 function escHtml(s) { return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
 let toastTimer;
@@ -1392,6 +1486,12 @@ $('confirmCancel').addEventListener('click', () => { closeModal('confirmModal');
     loadAddons();
   }
 })();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
 
 /* ═══════════════════════════════════════════════════════════════════
    CINEMETA GRANULAR CONTROL LOGIC

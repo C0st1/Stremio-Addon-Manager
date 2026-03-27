@@ -6,7 +6,10 @@
     { "src": "/api/health",      "dest": "/api/health.js" },
     { "src": "/api/addons/get",  "dest": "/api/addons/get.js" },
     { "src": "/api/addons/set",  "dest": "/api/addons/set.js" },
+    { "src": "/api/addons/check-links", "dest": "/api/addons/check-links.js" },
     { "src": "/api/login",       "dest": "/api/login.js" },
+    { "src": "/manifest.webmanifest", "dest": "/manifest.webmanifest" },
+    { "src": "/sw.js", "dest": "/sw.js" },
     { "src": "/",                "dest": "/api/configure.js" }
   ]
 }
