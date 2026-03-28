@@ -929,7 +929,7 @@ input.danger-toggle:checked + .slider { background-color: var(--danger); border-
       </div>
 
       <div style="font-size: 0.75rem; color: var(--success); margin-top: 6px; width: 100%; text-align: left; opacity: 0.9;">
-        🔒 <strong>Security Note:</strong> Your email and password are never stored. They are only used once to fetch your Auth Key, which is saved locally in your browser.
+        🔒 <strong>Security Note:</strong> Your email and password are never stored. They are only used once to fetch your Auth Key, which is kept in a secure, HttpOnly session cookie.
       </div>
 
     </div>
@@ -1092,6 +1092,7 @@ let original    = [];
 let pinned      = new Set(); 
 let groupMode   = 'none';    
 let sortable    = null;      
+let loggedIn    = false;     
 let disabledAddons = new Set(JSON.parse(localStorage.getItem('disabledAddons') || '[]'));
 let originalDisabledAddons = new Set();
 let disabledAddonStore = JSON.parse(localStorage.getItem('disabledAddonStore') || '{}');
@@ -1107,17 +1108,11 @@ function persistDisabledState() {
   localStorage.setItem('disabledAddonPositions', JSON.stringify(disabledAddonPositions));
 }
 
-// ─── LocalStorage & Auto-Refresh for Auth Key ─────────────────────
-const savedKey = localStorage.getItem('stremioAuthKey');
-if (savedKey) $('authKeyInput').value = savedKey;
-if (savedKey && savedKey.length > 20) {
-  bindSessionFromKey(savedKey).catch(() => {});
-}
+// ─── Auth Key (cookie-based session) ──────────────────────────────
 
 let authKeyTimeout;
 $('authKeyInput').addEventListener('input', (e) => {
   const val = e.target.value.trim();
-  localStorage.setItem('stremioAuthKey', val);
   
   // Clear the previous timer
   clearTimeout(authKeyTimeout);
@@ -1125,7 +1120,7 @@ $('authKeyInput').addEventListener('input', (e) => {
   // If the input looks like a valid auth key (usually 40+ characters), auto-load
   if (val.length > 20) {
     authKeyTimeout = setTimeout(() => {
-      bindSessionFromKey(val).then(loadAddons).catch(err => toast(err.message, 'error'));
+      bindSessionFromKey(val).then(() => { loggedIn = true; updateLoginUI(); return loadAddons(); }).catch(err => toast(err.message, 'error'));
     }, 600); // Wait 600ms after they finish pasting/typing to prevent spamming
   } else if (val.length === 0) {
     // Optional: Clear the list if they delete the key
@@ -1158,10 +1153,9 @@ document.querySelectorAll('#authModeCtrl button').forEach(btn => {
   });
 });
 
-// Update UI if key already exists
+// Update UI based on login state
 function updateLoginUI() {
-  const hasKey = !!$('authKeyInput').value.trim();
-  if (hasKey) {
+  if (loggedIn) {
     $('emailInput').style.display = 'none';
     $('passwordInput').style.display = 'none';
     $('btnDoLogin').style.display = 'none';
@@ -1193,9 +1187,8 @@ $('btnDoLogin').addEventListener('click', async () => {
     });
     const data = await res.json();
 
-    if (!data.ok || !data.authKey) throw new Error(data.error || 'Login failed');
-    $('authKeyInput').value = data.authKey;
-    localStorage.setItem('stremioAuthKey', data.authKey);
+    if (!data.ok) throw new Error(data.error || 'Login failed');
+    loggedIn = true;
     $('passwordInput').value = ''; 
     updateLoginUI();
     toast('Login successful!', 'success');
@@ -1218,7 +1211,7 @@ $('btnLogout').addEventListener('click', async () => {
     });
   } catch {}
   $('authKeyInput').value = '';
-  localStorage.removeItem('stremioAuthKey');
+  loggedIn = false;
   addons = [];
   renderList();
   updateLoginUI();
@@ -1368,6 +1361,8 @@ async function loadAddons() {
     original = JSON.parse(JSON.stringify(addons));
 
     $('authIndicator').classList.add('connected');
+    loggedIn = true;
+    updateLoginUI();
     renderList();
     hideSaveBar();
     toast(`Loaded ${addons.length} addon(s)`, 'success');
