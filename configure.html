@@ -1900,18 +1900,63 @@ $('toggleCinemetaMeta').addEventListener('change', (e) => {
   $('cinemetaWarningBox').classList.toggle('show', e.target.checked);
 });
 
+function detectCinemetaPatches(manifest) {
+  const catalogs = manifest.catalogs || [];
+  const resources = manifest.resources || [];
+
+  // Search is removed when NO catalog has a 'search' extra and NO 'search' resource exists
+  const hasSearchCatalog = catalogs.some(c =>
+    (c.extra && c.extra.some(e => e.name === 'search')) ||
+    (c.extraSupported && c.extraSupported.includes('search'))
+  );
+  const hasSearchResource = resources.some(r =>
+    (typeof r === 'string' ? r : r.name) === 'search'
+  );
+  const removeSearch = !hasSearchCatalog && !hasSearchResource;
+
+  // Catalogs patch: popular/new/featured catalogs are gone
+  const catalogTargets = ['popular', 'new', 'featured'];
+  const hasTargetCatalog = catalogs.some(c => {
+    const id = (c.id || '').toLowerCase();
+    const name = (c.name || '').toLowerCase();
+    return catalogTargets.some(t => id.includes(t) || name === t);
+  });
+  const removeCatalogs = !hasTargetCatalog;
+
+  // Metadata patch: 'meta' resource is gone
+  const hasMetaResource = resources.some(r =>
+    (typeof r === 'string' ? r : r.name) === 'meta'
+  );
+  const removeMetadata = !hasMetaResource;
+
+  return { removeSearch, removeCatalogs, removeMetadata };
+}
+
 function openCinemetaSettings(url) {
   targetCinemetaUrl = url;
-  
-  // Reset toggles (default is off/false)
-  $('toggleCinemetaSearch').checked = false;
-  $('toggleCinemetaCatalogs').checked = false;
-  $('toggleCinemetaMeta').checked = false;
-  $('cinemetaWarningBox').classList.remove('show');
-  
-  // NOTE: If you want to parse the existing manifest to pre-check these boxes
-  // based on previous modifications, you would inspect `addon.manifest` here.
-  
+
+  // Find the current addon manifest and detect which patches are already applied
+  const addon = addons.find(a => (a.transportUrl || a.manifest?.transportUrl) === url);
+  const manifest = addon?.manifest || {};
+
+  // Only run detection when there's something to inspect (manifest has resources or catalogs)
+  const hasManifestData = (manifest.resources && manifest.resources.length > 0) ||
+                          (manifest.catalogs && manifest.catalogs.length >= 0);
+
+  if (hasManifestData) {
+    const current = detectCinemetaPatches(manifest);
+    $('toggleCinemetaSearch').checked = current.removeSearch;
+    $('toggleCinemetaCatalogs').checked = current.removeCatalogs;
+    $('toggleCinemetaMeta').checked = current.removeMetadata;
+    $('cinemetaWarningBox').classList.toggle('show', current.removeMetadata);
+  } else {
+    // Fallback: default everything off if manifest is empty/unavailable
+    $('toggleCinemetaSearch').checked = false;
+    $('toggleCinemetaCatalogs').checked = false;
+    $('toggleCinemetaMeta').checked = false;
+    $('cinemetaWarningBox').classList.remove('show');
+  }
+
   openModal('cinemetaModal');
 }
 
