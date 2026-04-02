@@ -3278,23 +3278,27 @@ function renderDiscoverGrid() {
 }
 
 async function installRecommendedAddon(rec, url) {
+  // Fetch manifest SERVER-SIDE to avoid CORS issues with addon servers.
   // Stremio's cloud API requires a valid manifest for each addon.
-  // Fetch the manifest from transportUrl + '/manifest.json' before adding.
   const addonName = rec.name || 'Addon';
   try {
-    const manifestUrl = url.replace(/\/+$/, '') + '/manifest.json';
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-    const res = await fetch(manifestUrl, { method: 'GET', signal: controller.signal });
-    clearTimeout(timeoutId);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const manifest = await res.json();
-    addons.push({ transportUrl: url, manifest });
+    const res = await fetch(API_BASE + '/api/addons/resolve-manifest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ transportUrl: url }),
+    });
+    const data = await res.json();
+    if (data.ok && data.manifest) {
+      addons.push({ transportUrl: url, manifest: data.manifest });
+    } else {
+      throw new Error(data.error || 'Manifest not available');
+    }
   } catch (err) {
-    // If manifest fetch fails, add with transportUrl only as fallback.
-    // Stremio may still resolve it server-side for known addons.
-    console.warn('Could not fetch manifest for ' + addonName + ':', err.message);
-    addons.push({ transportUrl: url });
+    // If server-side manifest fetch also fails, do NOT add the addon.
+    // Adding without manifest causes Stremio API rejection.
+    toast(addonName + ': ' + err.message, 'error');
+    return false;
   }
   renderList();
   markChanged();
