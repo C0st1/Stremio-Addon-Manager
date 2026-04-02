@@ -3263,11 +3263,14 @@ function renderDiscoverGrid() {
 }
 
 function installRecommendedAddon(rec, url) {
-  const addon = rec.transportUrl ? rec : { transportUrl: url, manifest: rec.manifest || rec };
+  // Only push the transportUrl — Stremio's API rejects objects with extra/missing fields
+  // (e.g. manifest: null causes "invalid type: null, expected struct Manifest").
+  const addon = { transportUrl: url };
   addons.push(addon);
   renderList();
   markChanged();
-  toast(name + ' ' + t('installed').toLowerCase(), 'success');
+  const addonName = rec.name || name || 'Addon';
+  toast(addonName + ' ' + t('installed').toLowerCase(), 'success');
 }
 
 /* ═══════════════════════════════════════════════════════════════════
