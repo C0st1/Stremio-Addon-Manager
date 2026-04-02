@@ -145,7 +145,8 @@ const addonsImportHandler = require('../api/addons/import');
 const collectionsHandler = require('../api/collections');
 const recommendationsHandler = require('../api/recommendations');
 const docsHandler = require('../api/docs');
-const healthHandler = require('../api/health');
+// Health is now handled by manifest.js (merged to reduce function count)
+const healthHandler = require('../api/manifest');
 const configureHandler = require('../api/configure');
 const manifestHandler = require('../api/manifest');
 
@@ -613,11 +614,13 @@ describe('Integration Tests — Full Flows', () => {
   describe('Health Flow', () => {
     test('GET returns health status', async () => {
       const req = makeReq('GET');
+      req.url = '/api/health'; // merged handler routes by req.url
       const res = makeRes();
       await healthHandler(req, res);
 
       expect(res.statusCode).toBe(200);
       expect(res.body.ok).toBe(true);
+      expect(res.body.message).toBe('API is running correctly.');
     });
   });
 
