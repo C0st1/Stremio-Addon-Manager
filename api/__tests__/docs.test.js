@@ -85,7 +85,6 @@ describe('api/docs.js', () => {
     expect(paths).toContain('/api/addons/diff');
     expect(paths).toContain('/api/addons/import');
     expect(paths).toContain('/api/collections');
-    expect(paths).toContain('/api/recommendations');
     expect(paths).toContain('/api/docs');
   });
 
@@ -107,7 +106,6 @@ describe('api/docs.js', () => {
     expect(res.body.components.schemas).toHaveProperty('Error');
     expect(res.body.components.schemas).toHaveProperty('SuccessResponse');
     expect(res.body.components.schemas).toHaveProperty('Addon');
-    expect(res.body.components.schemas).toHaveProperty('Recommendation');
   });
 
   test('sets Content-Type to application/json', () => {

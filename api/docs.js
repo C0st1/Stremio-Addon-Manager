@@ -98,20 +98,7 @@ const openApiSpec = {
           },
         },
       },
-      Recommendation: {
-        type: 'object',
-        properties: {
-          name: { type: 'string', example: 'OpenSubtitles' },
-          transportUrl: { type: 'string', format: 'uri', example: 'https://opensubtitles.strem.io' },
-          description: { type: 'string', example: 'Subtitle addon with multi-language support.' },
-          types: {
-            type: 'array',
-            items: { type: 'string' },
-            example: ['movie', 'series'],
-          },
-          logo: { type: 'string', format: 'uri' },
-        },
-      },
+
     },
   },
   paths: {
@@ -594,77 +581,6 @@ const openApiSpec = {
         },
       },
     },
-    '/api/recommendations': {
-      get: {
-        summary: 'Get All Recommendations',
-        description: 'Returns the full list of community-curated addon recommendations.',
-        operationId: 'getRecommendations',
-        tags: ['Recommendations'],
-        responses: {
-          '200': {
-            description: 'All recommendations.',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    ok: { type: 'boolean', example: true },
-                    recommendations: {
-                      type: 'array',
-                      items: { $ref: '#/components/schemas/Recommendation' },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      post: {
-        summary: 'Search Recommendations',
-        description:
-          'Filters community recommendations by a query string. Matches against name, ' +
-          'description, and types (case-insensitive).',
-        operationId: 'searchRecommendations',
-        tags: ['Recommendations'],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  query: {
-                    type: 'string',
-                    example: 'subtitles',
-                    description: 'Search query to filter recommendations.',
-                  },
-                },
-              },
-            },
-          },
-        },
-        responses: {
-          '200': {
-            description: 'Filtered recommendations.',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    ok: { type: 'boolean', example: true },
-                    recommendations: {
-                      type: 'array',
-                      items: { $ref: '#/components/schemas/Recommendation' },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
     '/api/docs': {
       get: {
         summary: 'API Documentation (OpenAPI)',
@@ -687,7 +603,6 @@ const openApiSpec = {
     { name: 'Authentication', description: 'Login and session management.' },
     { name: 'Addons', description: 'Addon collection CRUD and utilities.' },
     { name: 'Collections', description: 'Named collection profile management.' },
-    { name: 'Recommendations', description: 'Community-curated addon recommendations.' },
     { name: 'Documentation', description: 'API documentation.' },
   ],
 };

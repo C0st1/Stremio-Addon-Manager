@@ -12,7 +12,6 @@
     { "src": "/api/login",       "dest": "/api/login.js" },
     { "src": "/api/session",     "dest": "/api/session.js" },
     { "src": "/api/collections", "dest": "/api/collections.js" },
-    { "src": "/api/recommendations", "dest": "/api/recommendations.js" },
     { "src": "/api/docs",        "dest": "/api/docs.js" },
     { "src": "/manifest.webmanifest", "dest": "/manifest.webmanifest" },
     { "src": "/sw.js", "dest": "/sw.js" },

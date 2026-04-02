@@ -3,7 +3,7 @@
  *
  * Comprehensive integration tests for the Stremio Addon Manager.
  * Tests full flows: login → session → get addons → set addons → check-links
- * Tests new endpoints: diff, import, collections, recommendations
+ * Tests new endpoints: diff, import, collections
  * Tests error scenarios: invalid auth, rate limiting, malformed requests
  */
 
@@ -155,7 +155,6 @@ const addonsCheckLinksHandler = require('../api/addons/check-links');
 const addonsDiffHandler = require('../api/addons/diff');
 const addonsImportHandler = require('../api/addons/import');
 const collectionsHandler = require('../api/collections');
-const recommendationsHandler = require('../api/recommendations');
 const docsHandler = require('../api/docs');
 // Health is now handled by manifest.js (merged to reduce function count)
 const healthHandler = require('../api/manifest');
@@ -569,35 +568,6 @@ describe('Integration Tests — Full Flows', () => {
       const res = makeRes();
       await collectionsHandler(req, res);
       expect(res.statusCode).toBe(404);
-    });
-  });
-
-  // ── Recommendations Flow ──────────────────────────────────────────────
-
-  describe('Recommendations Flow', () => {
-    test('GET returns list of recommendations', async () => {
-      const req = makeReq('GET');
-      const res = makeRes();
-      await recommendationsHandler(req, res);
-
-      expect(res.statusCode).toBe(200);
-      expect(res.body.ok).toBe(true);
-      expect(res.body.recommendations.length).toBeGreaterThan(0);
-    });
-
-    test('POST with query returns filtered recommendations', async () => {
-      const req = makeReq('POST', { query: 'subtitle' });
-      const res = makeRes();
-      await recommendationsHandler(req, res);
-
-      expect(res.statusCode).toBe(200);
-      expect(res.body.ok).toBe(true);
-      for (const rec of res.body.recommendations) {
-        const match =
-          (rec.name || '').toLowerCase().includes('subtitle') ||
-          (rec.description || '').toLowerCase().includes('subtitle');
-        expect(match).toBe(true);
-      }
     });
   });
 

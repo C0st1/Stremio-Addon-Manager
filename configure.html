@@ -1049,67 +1049,6 @@ input.danger-toggle:checked + .slider { background-color: var(--danger); border-
 .profiles-dropdown-footer input:focus { border-color: var(--accent); }
 
 /* ═══════════════════════════════════════════════════════
-   DISCOVER PANEL
-═══════════════════════════════════════════════════════ */
-.discover-panel {
-  display: none;
-}
-.discover-panel.active { display: block; }
-.discover-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-.discover-header h2 { font-size: 1.1rem; font-weight: 700; }
-.discover-search {
-  position: relative;
-  flex: 1;
-  min-width: 160px;
-}
-.discover-search input {
-  width: 100%;
-  padding: 8px 12px 8px 32px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--text-pri);
-  font-size: .84rem;
-  font-family: inherit;
-  outline: none;
-}
-.discover-search input:focus { border-color: var(--accent); }
-.discover-search svg {
-  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
-  color: var(--text-dim); pointer-events: none;
-}
-.discover-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 12px;
-}
-.discover-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 16px;
-  transition: border-color .15s, box-shadow .15s;
-}
-.discover-card:hover { border-color: var(--border-glow); box-shadow: 0 4px 16px #00000033; }
-.discover-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.discover-card-icon {
-  width: 36px; height: 36px; border-radius: var(--radius-sm);
-  background: var(--bg-panel); border: 1px solid var(--border);
-  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-  overflow: hidden; font-size: 1.1rem;
-}
-.discover-card-icon img { width: 100%; height: 100%; object-fit: contain; }
-.discover-card-name { font-weight: 600; font-size: .9rem; }
-.discover-card-desc { font-size: .78rem; color: var(--text-sec); margin-bottom: 10px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.discover-card-footer { display: flex; align-items: center; justify-content: space-between; }
-
-/* ═══════════════════════════════════════════════════════
    IMPORT MODAL ENHANCEMENT
 ═══════════════════════════════════════════════════════ */
 .import-progress {
@@ -1204,7 +1143,7 @@ input.danger-toggle:checked + .slider { background-color: var(--danger); border-
 }
 
 /* ═══════════════════════════════════════════════════════
-   NAV TABS (Addons / Discover)
+   NAV TABS
 ═══════════════════════════════════════════════════════ */
 .nav-tabs {
   display: flex;
@@ -1270,7 +1209,6 @@ input.danger-toggle:checked + .slider { background-color: var(--danger); border-
    RESPONSIVE ADDITIONS
 ═══════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
-  .discover-grid { grid-template-columns: 1fr; }
   .profiles-dropdown { min-width: 200px; }
   .undo-redo-float { bottom: 64px; right: 12px; }
 }
@@ -1371,7 +1309,6 @@ input.danger-toggle:checked + .slider { background-color: var(--danger); border-
 
   <div class="nav-tabs">
     <button class="nav-tab active" data-tab="addons" id="tabAddons">🔌 Addons</button>
-    <button class="nav-tab" data-tab="discover" id="tabDiscover">🔍 Discover</button>
   </div>
 
   <div id="addonsTabContent">
@@ -1417,24 +1354,6 @@ input.danger-toggle:checked + .slider { background-color: var(--danger); border-
       <span>Auto-backup active</span>
     </div>
   </div>
-  </div>
-
-  <div class="discover-panel" id="discoverPanel">
-    <div class="discover-header">
-      <h2 id="discoverTitle">🔍 Discover Addons</h2>
-      <div class="discover-search">
-        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <input type="text" id="discoverSearchInput" placeholder="Search recommendations…" />
-      </div>
-    </div>
-    <div class="discover-grid" id="discoverGrid">
-      <div class="status-panel">
-        <div class="spinner" style="width:36px;height:36px;border-width:3px;margin:0 auto 16px"></div>
-        <p>Loading recommendations…</p>
-      </div>
-    </div>
   </div>
 
   <footer style="text-align: center; margin-top: 50px; padding-bottom: 10px;">
@@ -2586,9 +2505,6 @@ const TRANSLATIONS = {
     password: 'Password',
     searchPlaceholder: 'Search addons…',
     addonsTab: 'Addons',
-    discoverTab: 'Discover',
-    discoverTitle: 'Discover Addons',
-    searchRecommendations: 'Search recommendations…',
     install: 'Install',
     installed: 'Installed',
     import: 'Import',
@@ -2641,7 +2557,6 @@ const TRANSLATIONS = {
     dragToReorder: 'Drag to reorder',
     addonDisabled: 'Addon disabled (click Save to apply in Stremio)',
     addonReenabled: 'Addon re-enabled (click Save to apply in Stremio)',
-    noRecommendations: 'No recommendations available',
     lastChecked: 'Last checked',
     uptime: 'Uptime',
     minutesAgo: 'minutes ago',
@@ -2689,9 +2604,6 @@ const TRANSLATIONS = {
     password: 'Parolă',
     searchPlaceholder: 'Căutați addon-uri…',
     addonsTab: 'Addon-uri',
-    discoverTab: 'Descoperă',
-    discoverTitle: 'Descoperă Addon-uri',
-    searchRecommendations: 'Căutați recomandări…',
     install: 'Instalează',
     installed: 'Instalat',
     import: 'Import',
@@ -2744,7 +2656,6 @@ const TRANSLATIONS = {
     dragToReorder: 'Trage pentru a reordona',
     addonDisabled: 'Addon dezactivat (apăsați Salvare pentru a aplica în Stremio)',
     addonReenabled: 'Addon reactivat (apăsați Salvare pentru a aplica în Stremio)',
-    noRecommendations: 'Nu sunt recomandări disponibile',
     lastChecked: 'Ultima verificare',
     uptime: 'Timp de funcționare',
     minutesAgo: 'minute în urmă',
@@ -2797,11 +2708,8 @@ function applyTranslations() {
   $('btnAutoBackup').innerHTML = '<span class="settings-icon">⏰</span> ' + t('autoBackup');
   // Search
   $('searchInput').placeholder = t('searchAddons');
-  $('discoverSearchInput').placeholder = t('searchRecommendations');
   // Nav tabs
   $('tabAddons').textContent = '🔌 ' + t('addonsTab');
-  $('tabDiscover').textContent = '🔍 ' + t('discoverTab');
-  $('discoverTitle').textContent = '🔍 ' + t('discoverTitle');
   // Auth
   const authBtns = document.querySelectorAll('#authModeCtrl button');
   if (authBtns[0]) authBtns[0].textContent = t('stremioAccount');
@@ -2949,20 +2857,6 @@ document.querySelectorAll('#typeFilterBar .type-filter-btn').forEach(btn => {
     btn.classList.add('active');
     activeTypeFilter = btn.dataset.type;
     applyFilter();
-  });
-});
-
-/* ═══════════════════════════════════════════════════════════════════
-   NAV TABS (Addons / Discover)
-═══════════════════════════════════════════════════════════════════ */
-document.querySelectorAll('.nav-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    const target = tab.dataset.tab;
-    $('addonsTabContent').style.display = target === 'addons' ? 'block' : 'none';
-    $('discoverPanel').classList.toggle('active', target === 'discover');
-    if (target === 'discover') loadRecommendations();
   });
 });
 
@@ -3150,125 +3044,6 @@ function closeProfilesDropdown() {
 $('profilesToggle').addEventListener('click', (e) => { e.stopPropagation(); toggleProfilesDropdown(); });
 $('btnNewProfileInline').addEventListener('click', (e) => { e.stopPropagation(); $('newProfileNameInput').focus(); });
 document.addEventListener('click', (e) => { if (!e.target.closest('.profiles-wrapper')) closeProfilesDropdown(); });
-
-/* ═══════════════════════════════════════════════════════════════════
-   COMMUNITY RECOMMENDATIONS (DISCOVER)
-═══════════════════════════════════════════════════════════════════ */
-let recommendations = [];
-let discoverSearchTimeout;
-
-$('discoverSearchInput').addEventListener('input', () => {
-  clearTimeout(discoverSearchTimeout);
-  discoverSearchTimeout = setTimeout(() => renderDiscoverGrid(), 300);
-});
-
-async function loadRecommendations() {
-  const grid = $('discoverGrid');
-  grid.innerHTML = '<div class="status-panel"><div class="spinner" style="width:36px;height:36px;border-width:3px;margin:0 auto 16px"></div><p>' + t('loading') + '</p></div>';
-  try {
-    const res = await fetch(API_BASE + '/api/recommendations', {
-      method: 'GET',
-      credentials: 'include',
-    });
-    if (!res.ok) throw new Error('Failed to fetch');
-    const data = await res.json();
-    recommendations = data.recommendations || data.addons || data || [];
-    if (!Array.isArray(recommendations)) recommendations = [];
-    renderDiscoverGrid();
-  } catch {
-    grid.innerHTML = '<div class="status-panel"><div class="icon">⚠️</div><h3>Could not load recommendations</h3><p>The recommendations server may be unavailable.</p></div>';
-  }
-}
-
-function renderDiscoverGrid() {
-  const grid = $('discoverGrid');
-  const q = ($('discoverSearchInput').value || '').toLowerCase().trim();
-  const filtered = q ? recommendations.filter(r => {
-    const name = (r.name || '').toLowerCase();
-    const desc = (r.description || '').toLowerCase();
-    return name.includes(q) || desc.includes(q);
-  }) : recommendations;
-
-  if (filtered.length === 0) {
-    grid.innerHTML = '<div class="status-panel"><div class="icon">🔍</div><h3>' + t('noRecommendations') + '</h3></div>';
-    return;
-  }
-
-  grid.innerHTML = '';
-  filtered.forEach(rec => {
-    const card = document.createElement('div');
-    card.className = 'discover-card';
-    const man = rec.manifest || rec;
-    const name = man.name || rec.name || 'Unknown';
-    const desc = man.description || man.shortDescription || rec.description || '';
-    const logo = man.logo || man.icon || rec.logo || '';
-    const url = rec.transportUrl || man.transportUrl || rec.url || '';
-    const types = man.types || rec.types || [];
-    const isInstalled = addons.some(a => (a.transportUrl || a.manifest?.transportUrl) === url);
-
-    const header = document.createElement('div');
-    header.className = 'discover-card-header';
-    const iconDiv = document.createElement('div');
-    iconDiv.className = 'discover-card-icon';
-    if (logo) {
-      const img = document.createElement('img');
-      img.src = logo; img.alt = ''; img.loading = 'lazy';
-      img.addEventListener('error', () => { iconDiv.textContent = '🔌'; });
-      iconDiv.appendChild(img);
-    } else {
-      iconDiv.textContent = '🔌';
-    }
-    header.appendChild(iconDiv);
-    const nameDiv = document.createElement('div');
-    nameDiv.className = 'discover-card-name';
-    nameDiv.textContent = name;
-    header.appendChild(nameDiv);
-    card.appendChild(header);
-
-    const descDiv = document.createElement('div');
-    descDiv.className = 'discover-card-desc';
-    descDiv.textContent = desc;
-    card.appendChild(descDiv);
-
-    const footer = document.createElement('div');
-    footer.className = 'discover-card-footer';
-    const tagsSpan = document.createElement('span');
-    tagsSpan.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;';
-    types.slice(0, 3).forEach(tp => {
-      const tag = document.createElement('span');
-      tag.className = 'tag ' + tagClass(tp);
-      tag.textContent = tp;
-      tagsSpan.appendChild(tag);
-    });
-    footer.appendChild(tagsSpan);
-    const installBtn = document.createElement('button');
-    installBtn.className = 'btn ' + (isInstalled ? 'btn-ghost' : 'btn-primary');
-    installBtn.style.cssText = 'padding:5px 14px;font-size:.8rem;';
-    installBtn.textContent = isInstalled ? t('installed') : t('install');
-    installBtn.disabled = isInstalled;
-    if (!isInstalled && url) {
-      installBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        installRecommendedAddon(rec, url);
-        installBtn.textContent = t('installed');
-        installBtn.disabled = true;
-        installBtn.className = 'btn btn-ghost';
-        installBtn.style.cssText = 'padding:5px 14px;font-size:.8rem;';
-      });
-    }
-    footer.appendChild(installBtn);
-    card.appendChild(footer);
-    grid.appendChild(card);
-  });
-}
-
-function installRecommendedAddon(rec, url) {
-  const addon = rec.transportUrl ? rec : { transportUrl: url, manifest: rec.manifest || rec };
-  addons.push(addon);
-  renderList();
-  markChanged();
-  toast(name + ' ' + t('installed').toLowerCase(), 'success');
-}
 
 /* ═══════════════════════════════════════════════════════════════════
    BATCH IMPORT FROM URLS
