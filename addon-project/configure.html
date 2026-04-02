@@ -1,0 +1,3826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#07070f" />
+<link rel="manifest" href="/manifest.webmanifest" />
+<title>Stremio Addon Manager</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
+<style>
+/* ═══════════════════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-deep:     #07070f;
+  --bg-card:     #0f0f1e;
+  --bg-panel:    #13132a;
+  --bg-hover:    #1a1a35;
+  --border:      #2a2a4a;
+  --border-glow: #5b4fcf55;
+  --accent:      #7c5cbf;
+  --accent-glow: #7c5cbf66;
+  --accent-hi:   #a07ef5;
+  --danger:      #cf4f5b;
+  --success:     #4fcfa0;
+  --warning:     #cfaa4f;
+  --text-pri:    #e8e6f5;
+  --text-sec:    #8a88aa;
+  --text-dim:    #5a5878;
+  --drag-bg:     #1c1c38;
+  --pin-color:   #cfaa4f;
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   16px;
+  --shadow:      0 4px 24px #00000066;
+  --font-sans:   'DM Sans', 'Segoe UI', system-ui, sans-serif;
+  --font-mono:   'JetBrains Mono', 'Fira Code', monospace;
+}
+
+body.light-theme {
+  --bg-deep: #f5f6fb;
+  --bg-card: #ffffff;
+  --bg-panel: #f0f2ff;
+  --bg-hover: #e9ecff;
+  --border: #d7dcef;
+  --border-glow: #7c5cbf33;
+  --text-pri: #17172a;
+  --text-sec: #4b4f6d;
+  --text-dim: #73779a;
+  --drag-bg: #e6e8f7;
+}
+
+html { font-size: 15px; scroll-behavior: smooth; }
+
+body {
+  background: var(--bg-deep);
+  color: var(--text-pri);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  min-height: 100vh;
+  padding: 0;
+  /* subtle grid texture */
+  background-image:
+    linear-gradient(rgba(124,92,191,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124,92,191,.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════════════════ */
+.app {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 16px 80px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════════════════ */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 0 24px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+.header-icon {
+  width: 46px; height: 46px;
+  background: linear-gradient(135deg, #5b4fcf, #a07ef5);
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+.header-text h1 { font-size: 1.35rem; font-weight: 700; letter-spacing: -.3px; }
+.header-text p  { color: var(--text-sec); font-size: .82rem; margin-top: 2px; }
+.header-actions { margin-left: auto; display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+
+/* ═══════════════════════════════════════════════════════
+   SETTINGS DROPDOWN
+═══════════════════════════════════════════════════════ */
+.settings-wrapper {
+  position: relative;
+}
+.settings-toggle {
+  width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-sec);
+  cursor: pointer;
+  transition: all .15s;
+  font-size: 1.1rem;
+  padding: 0;
+  line-height: 1;
+}
+.settings-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text-pri);
+  border-color: var(--accent);
+}
+.settings-toggle.open {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+  color: var(--accent-hi);
+}
+.settings-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 200px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 40px #000000aa;
+  z-index: 150;
+  opacity: 0;
+  transform: translateY(-6px) scale(.97);
+  pointer-events: none;
+  transition: opacity .18s, transform .18s;
+  overflow: hidden;
+}
+.settings-dropdown.open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+.settings-dropdown button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 16px;
+  background: none;
+  border: none;
+  color: var(--text-sec);
+  font-size: .85rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .12s, color .12s;
+  text-align: left;
+  white-space: nowrap;
+}
+.settings-dropdown button:hover {
+  background: var(--bg-hover);
+  color: var(--text-pri);
+}
+.settings-dropdown button .settings-icon {
+  font-size: 1rem;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.settings-dropdown .divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+/* ═══════════════════════════════════════════════════════
+   TOOLBAR (search, source toggle, action buttons)
+═══════════════════════════════════════════════════════ */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+}
+.search-wrap svg {
+  position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+  color: var(--text-dim); pointer-events: none;
+}
+#searchInput {
+  width: 100%;
+  padding: 9px 12px 9px 36px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-pri);
+  font-size: .88rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .2s;
+}
+#searchInput:focus { border-color: var(--accent); }
+#searchInput::placeholder { color: var(--text-dim); }
+
+.seg-ctrl {
+  display: flex;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.seg-ctrl button {
+  padding: 8px 14px;
+  background: none;
+  border: none;
+  color: var(--text-sec);
+  font-size: .82rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.seg-ctrl button.active {
+  background: var(--accent);
+  color: #fff;
+}
+.seg-ctrl button:hover:not(.active) { background: var(--bg-hover); color: var(--text-pri); }
+
+/* ═══════════════════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════════════════ */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-size: .85rem;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all .15s;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.btn-primary:hover { background: var(--accent-hi); border-color: var(--accent-hi); box-shadow: 0 0 16px var(--accent-glow); }
+.btn-ghost {
+  background: var(--bg-panel);
+  color: var(--text-sec);
+  border-color: var(--border);
+}
+.btn-ghost:hover { background: var(--bg-hover); color: var(--text-pri); border-color: var(--accent); }
+.btn-danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: #cf4f5b44;
+}
+.btn-danger:hover { background: #cf4f5b22; }
+.btn-success {
+  background: var(--success);
+  color: #0a1a14;
+  border-color: var(--success);
+}
+.btn[disabled] { opacity: .4; cursor: not-allowed; pointer-events: none; }
+.btn-icon {
+  width: 32px; height: 32px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm);
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-sec);
+  cursor: pointer;
+  transition: all .15s;
+  font-size: .9rem;
+}
+.btn-icon:hover { background: var(--bg-hover); color: var(--text-pri); border-color: var(--accent); }
+.btn-icon.danger:hover { color: var(--danger); border-color: var(--danger); background: #cf4f5b11; }
+.btn-icon.pin.pinned { color: var(--pin-color); border-color: var(--pin-color); background: #cfaa4f11; }
+.btn-icon.toggle-vis.disabled-addon { color: var(--text-dim); }
+.link-status-ok { color: var(--success); font-size: .75rem; }
+.link-status-bad { color: var(--danger); font-size: .75rem; }
+.protected-lock { color: var(--warning); font-size: .72rem; }
+
+/* ═══════════════════════════════════════════════════════
+   SECTION HEADER (category labels)
+═══════════════════════════════════════════════════════ */
+.section-label {
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 14px 0 6px;
+}
+.section-label span {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2px 10px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   ADDON CARD
+═══════════════════════════════════════════════════════ */
+#addonList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.addon-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: background .15s, border-color .15s, opacity .15s, box-shadow .15s;
+  position: relative;
+  cursor: default;
+  user-select: none;
+}
+.addon-card:hover { background: var(--bg-hover); border-color: var(--border-glow); }
+.addon-card.dragging {
+  opacity: .55;
+  background: var(--drag-bg);
+  border-color: var(--accent);
+  box-shadow: 0 8px 32px #00000088;
+  z-index: 999;
+}
+.addon-card.drag-over {
+  border-color: var(--accent-hi);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+.addon-card.disabled-addon {
+  opacity: .5;
+}
+.addon-card.pinned-addon {
+  border-left: 3px solid var(--pin-color);
+}
+.addon-card.hidden { display: none; }
+
+/* Drag handle */
+.drag-handle {
+  color: var(--text-dim);
+  cursor: grab;
+  padding: 4px;
+  flex-shrink: 0;
+  touch-action: none;
+  transition: color .15s;
+}
+.drag-handle:hover { color: var(--accent-hi); }
+.drag-handle:active { cursor: grabbing; }
+.addon-card.disabled-addon .drag-handle { cursor: not-allowed; }
+
+/* Addon icon */
+.addon-icon {
+  width: 40px; height: 40px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  font-size: 1.2rem;
+}
+.addon-icon img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+}
+.addon-icon-placeholder {
+  font-size: 1.2rem;
+}
+
+/* Addon info */
+.addon-info { flex: 1; min-width: 0; }
+.addon-name {
+  font-weight: 600;
+  font-size: .92rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: flex; align-items: center; gap: 6px;
+}
+.addon-version {
+  font-size: .7rem;
+  color: var(--text-dim);
+  font-weight: 400;
+}
+.addon-desc {
+  font-size: .78rem;
+  color: var(--text-sec);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-top: 1px;
+}
+.addon-tags {
+  display: flex; gap: 4px; flex-wrap: wrap;
+  margin-top: 4px;
+}
+.tag {
+  font-size: .66rem;
+  padding: 1px 7px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  background: var(--bg-panel);
+}
+.tag.stream  { border-color: #4f8bcf55; color: #7ab0e8; background: #4f8bcf11; }
+.tag.catalog { border-color: #4fcf8b55; color: #7ae8b0; background: #4fcf8b11; }
+.tag.meta    { border-color: #cf4fcf55; color: #e87ae8; background: #cf4fcf11; }
+.tag.subtitles { border-color: #cfcf4f55; color: #e8e87a; background: #cfcf4f11; }
+.tag.other   { border-color: var(--border); color: var(--text-dim); }
+
+/* Card actions */
+.card-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+/* Order badge */
+.order-badge {
+  position: absolute;
+  top: 6px; left: 6px;
+  font-size: .62rem;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  min-width: 18px;
+  text-align: center;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SAVE BAR
+═══════════════════════════════════════════════════════ */
+.save-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: #0f0f1eee;
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transform: translateY(100%);
+  transition: transform .3s ease;
+  z-index: 100;
+}
+.save-bar.visible { transform: translateY(0); }
+.save-bar-text { flex: 1; font-size: .85rem; color: var(--text-sec); }
+.save-bar-text strong { color: var(--accent-hi); }
+
+/* ═══════════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════════ */
+#toast {
+  position: fixed;
+  bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 20px;
+  font-size: .85rem;
+  color: var(--text-pri);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s, transform .25s;
+  z-index: 200;
+  white-space: nowrap;
+  box-shadow: var(--shadow);
+  display: flex; align-items: center; gap: 8px;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.success { border-color: var(--success); }
+#toast.error   { border-color: var(--danger);  }
+#toast.warning { border-color: var(--warning); }
+
+/* ═══════════════════════════════════════════════════════
+   MODAL (auth key, backup, confirm)
+═══════════════════════════════════════════════════════ */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: #00000088;
+  backdrop-filter: blur(4px);
+  z-index: 300;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s;
+  padding: 16px;
+}
+.modal-backdrop.open { opacity: 1; pointer-events: auto; }
+.modal {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  width: 100%; max-width: 440px;
+  box-shadow: 0 20px 60px #000000aa;
+  transform: scale(.96);
+  transition: transform .2s;
+}
+.modal-backdrop.open .modal { transform: scale(1); }
+.modal h2 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
+.modal p  { font-size: .85rem; color: var(--text-sec); margin-bottom: 16px; line-height: 1.6; }
+.modal label { display: block; font-size: .8rem; color: var(--text-sec); margin-bottom: 4px; }
+.modal input, .modal textarea, .modal select {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-pri);
+  font-family: inherit;
+  font-size: .88rem;
+  outline: none;
+  transition: border-color .2s;
+  margin-bottom: 14px;
+}
+.modal input:focus, .modal textarea:focus, .modal select:focus { border-color: var(--accent); }
+.modal textarea { resize: vertical; min-height: 100px; font-family: var(--font-mono); font-size: .78rem; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* ═══════════════════════════════════════════════════════
+   STATUS / EMPTY STATES
+═══════════════════════════════════════════════════════ */
+.status-panel {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-sec);
+  font-size: .88rem;
+}
+.status-panel .icon { font-size: 3rem; margin-bottom: 14px; }
+.status-panel h3 { color: var(--text-pri); margin-bottom: 6px; }
+
+/* spinner */
+.spinner {
+  width: 18px; height: 18px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent-hi);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ═══════════════════════════════════════════════════════
+   STATS BAR
+═══════════════════════════════════════════════════════ */
+.stats-bar {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: .8rem;
+  color: var(--text-sec);
+}
+.stat { display: flex; align-items: center; gap: 5px; }
+.stat-val { color: var(--text-pri); font-weight: 600; font-family: var(--font-mono); }
+
+/* ═══════════════════════════════════════════════════════
+   AUTH KEY SECTION
+═══════════════════════════════════════════════════════ */
+.auth-section {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.auth-section label { font-size: .8rem; color: var(--text-sec); white-space: nowrap; }
+.auth-section input {
+  flex: 1;
+  padding: 7px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-pri);
+  font-family: var(--font-mono);
+  font-size: .78rem;
+  outline: none;
+  min-width: 120px;
+}
+.auth-section input:focus { border-color: var(--accent); }
+.auth-indicator {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  flex-shrink: 0;
+}
+.auth-indicator.connected { background: var(--success); box-shadow: 0 0 6px var(--success); }
+
+/* ═══════════════════════════════════════════════════════
+   GROUPING TOGGLE
+═══════════════════════════════════════════════════════ */
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 4px;
+  cursor: pointer;
+  user-select: none;
+}
+.group-header:hover .group-title { color: var(--text-pri); }
+.group-title {
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  transition: color .15s;
+}
+.group-chevron {
+  color: var(--text-dim);
+  transition: transform .2s;
+  font-size: .75rem;
+}
+.group-header.collapsed .group-chevron { transform: rotate(-90deg); }
+.group-count {
+  font-size: .7rem;
+  padding: 1px 7px;
+  border-radius: 20px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+.group-body.collapsed { display: none; }
+
+/* ═══════════════════════════════════════════════════════
+   RESPONSIVE — TABLETS (≤768px)
+═══════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .app { padding: 16px 12px 90px; }
+  .header { gap: 10px; padding: 16px 0 18px; }
+  .header-icon { width: 40px; height: 40px; font-size: 18px; }
+  .header-text h1 { font-size: 1.15rem; }
+  .header-text p { font-size: .75rem; }
+
+  .toolbar { gap: 8px; }
+  .stats-bar { padding: 10px 12px; gap: 12px; font-size: .75rem; }
+  .auth-section { padding: 12px; }
+
+  .modal { padding: 20px; }
+  .modal h2 { font-size: .95rem; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   RESPONSIVE — PHONES (≤600px)
+═══════════════════════════════════════════════════════ */
+@media (max-width: 600px) {
+  html { font-size: 14px; }
+  .app { padding: 12px 10px 90px; }
+
+  /* Header */
+  .header { gap: 8px; padding: 12px 0 14px; margin-bottom: 14px; }
+  .header-icon { width: 36px; height: 36px; font-size: 16px; border-radius: var(--radius-sm); }
+  .header-text h1 { font-size: 1.05rem; }
+  .header-text p { display: none; }
+
+  /* Auth section — full-width stacking */
+  .auth-section {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px;
+    gap: 10px;
+  }
+  .auth-section input { width: 100%; font-size: .82rem; }
+  #loginAccountForm {
+    flex-direction: column !important;
+  }
+  #loginAccountForm input {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+  #loginAccountForm .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  #loginKeyForm {
+    width: 100% !important;
+  }
+
+  /* Toolbar */
+  .toolbar { gap: 6px; margin-bottom: 12px; }
+  .search-wrap { min-width: 0; flex-basis: 100%; }
+  #searchInput { padding: 10px 12px 10px 34px; font-size: .85rem; }
+  .seg-ctrl button { padding: 8px 10px; font-size: .78rem; }
+
+  /* Stats bar */
+  .stats-bar { padding: 8px 10px; gap: 10px; font-size: .72rem; margin-bottom: 10px; }
+
+  /* Addon cards — compact layout */
+  .addon-card {
+    padding: 10px 10px 10px 8px;
+    gap: 8px;
+  }
+  .addon-icon { width: 32px; height: 32px; border-radius: 4px; }
+  .addon-info { min-width: 0; }
+  .addon-name { font-size: .84rem; gap: 4px; }
+  .addon-version { font-size: .62rem; }
+  .addon-desc { display: none; }
+  .addon-tags { display: none; }
+  .order-badge { font-size: .56rem; top: 4px; left: 4px; }
+  .drag-handle { padding: 2px; }
+  .drag-handle svg { width: 12px; height: 12px; }
+
+  /* Card actions — responsive grid */
+  .card-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 28px);
+    gap: 3px;
+    flex-shrink: 0;
+  }
+  .btn-icon {
+    width: 28px; height: 28px;
+    font-size: .78rem;
+  }
+
+  /* Save bar — compact */
+  .save-bar {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .save-bar-text { font-size: .78rem; }
+  .save-bar .btn { padding: 7px 12px; font-size: .8rem; }
+
+  /* Toast */
+  #toast {
+    bottom: 70px;
+    max-width: calc(100vw - 32px);
+    font-size: .8rem;
+    padding: 8px 14px;
+    white-space: normal;
+  }
+
+  /* Modals — full-width on phones */
+  .modal-backdrop { padding: 10px; }
+  .modal {
+    padding: 20px 16px;
+    max-width: 100%;
+    border-radius: var(--radius-md);
+  }
+  .modal h2 { font-size: .95rem; }
+  .modal p { font-size: .8rem; }
+  .modal textarea { min-height: 80px; font-size: .72rem; }
+  .modal-actions { gap: 6px; }
+  .modal-actions .btn { padding: 7px 12px; font-size: .8rem; }
+  .backup-tabs { gap: 6px; }
+  .backup-tab { padding: 7px 8px; font-size: .8rem; }
+
+  /* Toggle rows in modals */
+  .toggle-row { padding: 10px 12px; }
+  .toggle-info h3 { font-size: .82rem; }
+  .toggle-info p { font-size: .72rem; }
+
+  /* Settings dropdown — full-width on phones */
+  .settings-dropdown { min-width: 180px; right: 0; }
+
+  /* Footer */
+  footer { margin-top: 30px !important; }
+  footer a { font-size: .78rem !important; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   RESPONSIVE — VERY SMALL PHONES (≤380px)
+═══════════════════════════════════════════════════════ */
+@media (max-width: 380px) {
+  html { font-size: 13px; }
+  .app { padding: 8px 8px 90px; }
+  .header { gap: 6px; }
+  .header-icon { width: 32px; height: 32px; font-size: 14px; }
+  .header-text h1 { font-size: .95rem; }
+
+  .addon-card { padding: 8px 8px 8px 6px; gap: 6px; }
+  .addon-icon { width: 28px; height: 28px; }
+  .addon-name { font-size: .78rem; }
+
+  .card-actions {
+    grid-template-columns: repeat(2, 26px);
+    gap: 2px;
+  }
+  .btn-icon { width: 26px; height: 26px; font-size: .72rem; }
+
+  .settings-toggle { width: 34px; height: 34px; font-size: 1rem; }
+
+  .seg-ctrl button { padding: 6px 8px; font-size: .72rem; }
+  .auth-section { padding: 10px; gap: 8px; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   TOGGLE SWITCHES & CINEMETA MODAL
+═══════════════════════════════════════════════════════ */
+.toggle-row {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 12px 14px; background: var(--bg-card);
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  margin-bottom: 10px; transition: border-color .2s;
+}
+.toggle-row:hover { border-color: var(--accent); }
+.toggle-info h3 { font-size: .9rem; font-weight: 600; color: var(--text-pri); margin-bottom: 2px; }
+.toggle-info p { font-size: .78rem; color: var(--text-sec); line-height: 1.4; }
+
+.switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; margin-left: 12px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+  background-color: var(--bg-deep); border: 1px solid var(--border);
+  transition: .3s; border-radius: 22px;
+}
+.slider:before {
+  position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px;
+  background-color: var(--text-sec); transition: .3s; border-radius: 50%;
+}
+input:checked + .slider { background-color: var(--accent); border-color: var(--accent); }
+input:checked + .slider:before { transform: translateX(18px); background-color: #fff; }
+input.danger-toggle:checked + .slider { background-color: var(--danger); border-color: var(--danger); }
+
+.warning-box {
+  background: #cf4f5b15; border-left: 3px solid var(--danger);
+  padding: 12px; border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  margin-top: 10px; display: none;
+}
+.warning-box.show { display: block; animation: fade-in .3s ease; }
+.warning-box h4 { color: var(--danger); font-size: .85rem; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+.warning-box p { color: var(--text-pri); font-size: .78rem; opacity: 0.9; }
+@keyframes fade-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Backup modal tabs */
+.backup-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+.backup-tab {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-sec);
+  padding: 8px 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.backup-tab.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.backup-pane { display: none; }
+.backup-pane.active { display: block; }
+
+
+/* ═══════════════════════════════════════════════════════
+   TYPE FILTER BUTTONS
+═══════════════════════════════════════════════════════ */
+.type-filter-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.type-filter-btn {
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text-sec);
+  font-size: .78rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.type-filter-btn:hover { border-color: var(--accent); color: var(--text-pri); }
+.type-filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.filter-count {
+  font-size: .72rem;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  margin-left: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   EXPANDABLE CARD PREVIEW
+═══════════════════════════════════════════════════════ */
+.addon-card { cursor: pointer; }
+.addon-card-preview {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height .35s ease, padding .35s ease, opacity .25s ease;
+  opacity: 0;
+  padding: 0 14px;
+}
+.addon-card-preview.open {
+  max-height: 300px;
+  opacity: 1;
+  padding: 10px 14px 14px;
+}
+.preview-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 16px;
+  font-size: .78rem;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.preview-field-label { color: var(--text-dim); font-weight: 500; }
+.preview-field-value { color: var(--text-sec); word-break: break-all; }
+.preview-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: .78rem;
+}
+
+/* ═══════════════════════════════════════════════════════
+   FLOATING UNDO/REDO BUTTONS
+═══════════════════════════════════════════════════════ */
+.undo-redo-float {
+  position: fixed;
+  bottom: 70px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 90;
+}
+.undo-redo-float .btn-icon {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  color: var(--text-sec);
+  font-size: 1rem;
+  box-shadow: var(--shadow);
+  transition: all .15s;
+  display: flex; align-items: center; justify-content: center;
+}
+.undo-redo-float .btn-icon:hover:not([disabled]) { background: var(--bg-hover); color: var(--text-pri); border-color: var(--accent); }
+.undo-redo-float .btn-icon[disabled] { opacity: .3; cursor: not-allowed; }
+
+/* ═══════════════════════════════════════════════════════
+   PROFILES DROPDOWN
+═══════════════════════════════════════════════════════ */
+.profiles-wrapper { position: relative; }
+.profiles-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-sec);
+  font-size: .82rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .15s;
+}
+.profiles-toggle:hover { border-color: var(--accent); color: var(--text-pri); }
+.profiles-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 240px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 40px #000000aa;
+  z-index: 150;
+  opacity: 0;
+  transform: translateY(-6px) scale(.97);
+  pointer-events: none;
+  transition: opacity .18s, transform .18s;
+  overflow: hidden;
+}
+.profiles-dropdown.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+.profiles-dropdown-header {
+  padding: 10px 14px;
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.profiles-list { max-height: 200px; overflow-y: auto; }
+.profile-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  cursor: pointer;
+  transition: background .12s;
+  font-size: .84rem;
+  color: var(--text-sec);
+}
+.profile-item:hover { background: var(--bg-hover); color: var(--text-pri); }
+.profile-item.active-profile { color: var(--accent-hi); }
+.profile-item-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-item-actions { display: flex; gap: 4px; opacity: 0; transition: opacity .15s; }
+.profile-item:hover .profile-item-actions { opacity: 1; }
+.profile-item-actions button {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-dim); font-size: .8rem; padding: 2px 4px;
+}
+.profile-item-actions button:hover { color: var(--danger); }
+.profiles-dropdown-footer {
+  padding: 8px 10px;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 6px;
+}
+.profiles-dropdown-footer input {
+  flex: 1;
+  padding: 6px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-pri);
+  font-size: .82rem;
+  font-family: inherit;
+  outline: none;
+}
+.profiles-dropdown-footer input:focus { border-color: var(--accent); }
+
+/* ═══════════════════════════════════════════════════════
+   DISCOVER PANEL
+═══════════════════════════════════════════════════════ */
+.discover-panel {
+  display: none;
+}
+.discover-panel.active { display: block; }
+.discover-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.discover-header h2 { font-size: 1.1rem; font-weight: 700; }
+.discover-search {
+  position: relative;
+  flex: 1;
+  min-width: 160px;
+}
+.discover-search input {
+  width: 100%;
+  padding: 8px 12px 8px 32px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-pri);
+  font-size: .84rem;
+  font-family: inherit;
+  outline: none;
+}
+.discover-search input:focus { border-color: var(--accent); }
+.discover-search svg {
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  color: var(--text-dim); pointer-events: none;
+}
+.discover-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.discover-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.discover-card:hover { border-color: var(--border-glow); box-shadow: 0 4px 16px #00000033; }
+.discover-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.discover-card-icon {
+  width: 36px; height: 36px; border-radius: var(--radius-sm);
+  background: var(--bg-panel); border: 1px solid var(--border);
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  overflow: hidden; font-size: 1.1rem;
+}
+.discover-card-icon img { width: 100%; height: 100%; object-fit: contain; }
+.discover-card-name { font-weight: 600; font-size: .9rem; }
+.discover-card-desc { font-size: .78rem; color: var(--text-sec); margin-bottom: 10px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.discover-card-footer { display: flex; align-items: center; justify-content: space-between; }
+
+/* ═══════════════════════════════════════════════════════
+   IMPORT MODAL ENHANCEMENT
+═══════════════════════════════════════════════════════ */
+.import-progress {
+  margin-top: 12px;
+  padding: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: .82rem;
+  display: none;
+}
+.import-progress.active { display: block; }
+.import-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--bg-deep);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.import-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width .3s ease;
+  width: 0%;
+}
+.import-results { color: var(--text-sec); font-size: .8rem; }
+.import-results .success-text { color: var(--success); }
+.import-results .error-text { color: var(--danger); }
+
+/* ═══════════════════════════════════════════════════════
+   HEALTH TREND INDICATORS
+═══════════════════════════════════════════════════════ */
+.health-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: .7rem;
+  font-family: var(--font-mono);
+}
+.health-trend.up { color: var(--success); }
+.health-trend.down { color: var(--danger); }
+.health-trend.flat { color: var(--text-dim); }
+.health-trend-arrow { font-size: .65rem; }
+.health-last-checked {
+  font-size: .72rem;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+.health-uptime { color: var(--text-sec); font-size: .7rem; }
+
+/* ═══════════════════════════════════════════════════════
+   LANGUAGE SELECTOR
+═══════════════════════════════════════════════════════ */
+.lang-selector {
+  padding: 5px 8px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-sec);
+  font-size: .78rem;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  transition: border-color .15s;
+}
+.lang-selector:hover { border-color: var(--accent); }
+.lang-selector option { background: var(--bg-panel); color: var(--text-pri); }
+
+/* ═══════════════════════════════════════════════════════
+   AUTO-BACKUP STATUS
+═══════════════════════════════════════════════════════ */
+.autobackup-status {
+  font-size: .75rem;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+.autobackup-status .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+  animation: pulse-dot 2s infinite;
+}
+.autobackup-status.inactive .dot { background: var(--text-dim); animation: none; }
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .4; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   NAV TABS (Addons / Discover)
+═══════════════════════════════════════════════════════ */
+.nav-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 18px;
+  border-bottom: 2px solid var(--border);
+}
+.nav-tab {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: .88rem;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color .15s;
+  position: relative;
+}
+.nav-tab:hover { color: var(--text-sec); }
+.nav-tab.active {
+  color: var(--accent-hi);
+}
+.nav-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0; right: 0;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   RESTORE BACKUP LIST
+═══════════════════════════════════════════════════════ */
+.backup-list {
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.backup-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: .8rem;
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.backup-list-item:hover { border-color: var(--accent); }
+.backup-list-item-info { flex: 1; }
+.backup-list-item-time { color: var(--text-dim); font-family: var(--font-mono); font-size: .72rem; }
+.backup-list-item-count { color: var(--text-sec); font-size: .78rem; }
+
+/* ═══════════════════════════════════════════════════════
+   RESPONSIVE ADDITIONS
+═══════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .discover-grid { grid-template-columns: 1fr; }
+  .profiles-dropdown { min-width: 200px; }
+  .undo-redo-float { bottom: 64px; right: 12px; }
+}
+@media (max-width: 600px) {
+  .type-filter-bar { gap: 4px; }
+  .type-filter-btn { padding: 5px 8px; font-size: .72rem; }
+  .nav-tab { padding: 8px 12px; font-size: .82rem; }
+  .undo-redo-float { bottom: 58px; right: 10px; }
+  .undo-redo-float .btn-icon { width: 34px; height: 34px; }
+  .profiles-toggle { padding: 6px 8px; font-size: .78rem; }
+  .preview-content { grid-template-columns: 1fr; }
+}
+
+</style>
+<!-- SortableJS for drag-and-drop (inline CDN — bundled locally for offline use) -->
+<script>
+/*! SortableJS v1.15.2 — bundled inline (MIT License) */
+!function(t,e){"object"==typeof exports&&"undefined"!=typeof module?module.exports=e():"function"==typeof define&&define.amd?define(e):(t="undefined"!=typeof globalThis?globalThis:t||self).Sortable=e()}(this,function(){"use strict";function t(e,n){var o=Object.keys(e);if(Object.getOwnPropertySymbols){var r=Object.getOwnPropertySymbols(e);n&&(r=r.filter(function(t){return Object.getOwnPropertyDescriptor(e,t).enumerable})),o.push.apply(o,r)}return o}function e(e){for(var n=1;n<arguments.length;n++){var o=null!=arguments[n]?arguments[n]:{};n%2?t(Object(o),!0).forEach(function(t){s(e,t,o[t])}):Object.getOwnPropertyDescriptors?Object.defineProperties(e,Object.getOwnPropertyDescriptors(o)):t(Object(o)).forEach(function(t){Object.defineProperty(e,t,Object.getOwnPropertyDescriptor(o,t))})}return e}function n(t){return(n="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(t){return typeof t}:function(t){return t&&"function"==typeof Symbol&&t.constructor===Symbol&&t!==Symbol.prototype?"symbol":typeof t})(t)}function o(t){return t.charAt(0).toUpperCase()+t.slice(1)}function r(t,e){if("undefined"==typeof window||!window.document)return e;var n=window.getComputedStyle(t,null),o=e.split(".");if(1===o.length)return n[e];for(var r=0,s=o.length;r<s;r++)t=t[o[r]];return t}function s(t,e,n){return e=function(t){var e=function(t,e){if("object"!=n(t)||!t)return t;var o=t[Symbol.toPrimitive];if(void 0!==o){var r=o.call(t,e||"default");if("object"!=n(r))return r;throw new TypeError("@@toPrimitive must return a primitive value.")}return("string"===e?String:Number)(t)}(t,"string");return"symbol"==n(e)?e:String(e)}(e),e in t?Object.defineProperty(t,e,{value:n,enumerable:!0,configurable:!0,writable:!0}):t[e]=n,t}function i(t){return t.nodeName&&t.nodeName.toLowerCase()}function a(t,e){return("none"===t.css("pointer-events")||"none"===t.css("display")||"none"===t.css("visibility")||parseFloat(t.css("opacity"))<=0)&&!e&&t.closest("[hidden]")}var c=[];function l(t){for(var e in t)if(t.hasOwnProperty(e))return!1;return!0}function f(t,e,n){if(t&&e&&n){t.addEventListener(e,n)}}function d(t,e,n){if(t&&e&&n){t.removeEventListener(e,n)}}function u(t,e){if(t&&e){t.sortable&&t.sortable.destroy(),t.sortable=e}}function h(t){return function(e){var n=e.originalEvent||e;if(n.dataTransfer&&n.dataTransfer.types){for(var o=0;o<n.dataTransfer.types.length;o++)if("Files"===n.dataTransfer.types[o])return!1}return!0}}var p,m,v,g,b,y,w,x,k,E,M,O,A,D,S,_,T,N,C,B,I,j,P,L,R,X,F,W,Y,z,H,V,q,U=[];function G(t){if(U.indexOf(t)===-1){U.push(t);return}throw new Error("Sortable: Can't mount plugin more than once")}function Z(t,e){return t&&e?t.toString()===e.toString():void 0}function J(t){if(void 0===t)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return t}function Q(t,e){if(!(t instanceof e))throw new TypeError("Cannot call a class as a function")}function K(t,e){return e&&("object"===n(e)||"function"==typeof e)?e:J(t)}function tt(t,e){for(;!Object.prototype.hasOwnProperty.call(t,e)&&null!==(t=Object.getPrototypeOf(t)););return t}function et(t,e,n){return(e=it(e))in t?Object.defineProperty(t,e,{value:n,enumerable:!0,configurable:!0,writable:!0}):t[e]=n,t}function nt(t){return(nt=Object.setPrototypeOf?Object.getPrototypeOf.bind():function(t){return t.__proto__||Object.getPrototypeOf(t)})(t)}function ot(t,e){return(ot=Object.setPrototypeOf?Object.setPrototypeOf.bind():function(t,e){return t.__proto__=e,t})(t,e)}function rt(t){if("undefined"==typeof WeakMap)return null;var e=new WeakMap;return(rt=function(t){return e})(t)}function st(t,e){var n=rt(ot);if(!n)return Object.create(t);var o=n.get(t);if(!o){var r=Object.create(t);n.set(t,o=r)}var s=Object.getOwnPropertyDescriptor(t,"constructor"),i=s&&s.value,a="function"==typeof i&&i===o.constructor;return a?Object.create(o):(Object.defineProperty(o,"constructor",{value:e||function(){}}),o)}function it(t){var e=function(t,e){if("object"!=n(t)||!t)return t;var o=t[Symbol.toPrimitive];if(void 0!==o){var r=o.call(t,"string");if("object"!=n(r))return r;throw new TypeError("@@toPrimitive must return a primitive value.")}return String(t)}(t);return"symbol"==n(e)?e:String(e)}var at=[];function ct(t){at.push(t);var e=function(){at.splice(at.indexOf(t),1)};return t.utils={on:f,off:d,css:r,find:function(t,e,n){var o=t.querySelectorAll(e);for(var r in o)o.hasOwnProperty(r)&&n(o[r],+r)},is:function(t,e){return!!(t.matches||t.matchesSelector||t.msMatchesSelector||t.mozMatchesSelector||t.webkitMatchesSelector||t.oMatchesSelector).call(t,e)},extend:function(t,e){if(t&&e)for(var n in e)e.hasOwnProperty(n)&&(t[n]=e[n]);return t},throttle:function(t,e){var n,o;return function(){var r=arguments,s=this;n?o=!0:(n=!0,setTimeout(function(){o&&t.apply(s,r),n=!1,o=!1},e),t.apply(s,r))}},closest:function(t,e,n,o){for(;t;){if(e&&t.matches(e)&&(!n||n.contains(t))&&(!o||t!==o))return t;if(t===n)break;t=t.parentNode}return null},toggleClass:function(t,e,n){t&&e&&(t.classList?n?t.classList.add(e):t.classList.remove(e):(n?t.className+=" "+e:t.className=t.className.replace(new RegExp("(^|\\b)"+e.split(" ").join("|")+"(\\b|$)")," ")).trim())},index:function(t,e){var n=0,o=t.parentNode;if(o){for(;null!==(t=t.previousElementSibling);)"TEMPLATE"===t.nodeName.toUpperCase()||"./.".test(t.getAttribute("class"))||e&&!t.matches(e)||n++;return n}return-1},nextTick:function(t){return setTimeout(t,0)},cancelNextTick:function(t){return clearTimeout(t)},detectDirection:function(t,e){var n=r(t,"direction"),o=r(t,"display"),s=window.getComputedStyle(t.children[0]||t),i=parseInt(r(t,"height")),a=parseInt(r(t,"paddingTop")),c=parseInt(r(t,"paddingBottom")),l=parseInt(s["marginTop"])||0,f=parseInt(s["marginBottom"])||0,d=t.children[1]&&parseInt(r(t.children[1],"marginTop"))||0;return n||"flex"!==o&&"inline-flex"!==o?"column"===n||"column"===o?"vertical":"inline"===n||"inline"===o?"horizontal":t.offsetWidth<t.scrollWidth?"horizontal":"vertical":"row"===r(t,"flex-direction")||r(t,"flex-direction").indexOf("row")!==-1?"horizontal":"vertical"},getChild:function(t,e,n,o){var r=0,s=t.children;for(var i=0,a=s.length;i<a;i++){var c=s[i];if("TEMPLATE"===c.nodeName.toUpperCase()||c===Sortable.ghost||o&&Sortable.filter&&c.matches(Sortable.filter))continue;if(r===e)return c;r++}return null},getParentAutoScrollElement:function(t,e){if(!t||!t.getBoundingClientRect)return m();for(var n=t,o=!1,r=window,s=r.document,i=s.scrollingElement||s.documentElement;n;){if(n===i)return r;if(!o&&n.height<n.scrollHeight||!o&&n.width<n.scrollWidth){var a=window.getComputedStyle(n);if(!("visible"===a.overflow&&!e||"visible"===a.overflowX&&!e||"visible"===a.overflowY&&!e)&&("auto"===a.overflow||"scroll"===a.overflow||"auto"===a.overflowX||"scroll"===a.overflowX||"auto"===a.overflowY||"scroll"===a.overflowY))return n}n=n.parentNode}return r},expando:"Sortable"+Date.now()},e}var lt=function(){function t(){Q(this,t)}return t}();function ft(t,e){var n=e.group;lt.prototype=t,n&&"object"===n(n)||(e.group={name:n,pull:!0,put:!0,revertClone:!1})}var dt="Sortable"+Math.random().toString(36).substr(2),ut="Sortable:dragStart",ht="Sortable:dragMove",pt="Sortable:drop";function mt(t,e){var n=new CustomEvent(t,{bubbles:!0,cancelable:!0,detail:e});return n}function vt(t){return window.Sortable&&window.Sortable[dt]===t}var gt=function(){};function bt(t,e){var n,o=J(K(this,tt(bt).call(this)));return et(J(o),"sortable",void 0),et(J(o),"options",void 0),et(J(o),"el",void 0),Q(J(o),bt),o.el=t,o.options=e=e||{},ot(J(o),nt(bt).prototype),n=o,o.sortable=new Sortable(t,e),Object.assign(J(n),Sortable.utils),n}var yt=function(){};function wt(){return window.Sortable}})// End of SortableJS
+</script>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="header-icon">🎬</div>
+    <div class="header-text">
+      <h1>Addon Manager</h1>
+      <p>Reorder, organize, and manage your Stremio addons</p>
+    </div>
+    <div class="header-actions">
+      <select class="lang-selector" id="langSelector" title="Language">
+      <option value="en">EN</option>
+      <option value="ro">RO</option>
+    </select>
+    <button class="btn btn-ghost" id="btnRefresh" title="Reload addons from Stremio">↻ Refresh</button>
+      <div class="profiles-wrapper" id="profilesWrapper">
+        <button class="profiles-toggle" id="profilesToggle" title="Profiles">📋 Profiles</button>
+        <div class="profiles-dropdown" id="profilesDropdown">
+          <div class="profiles-dropdown-header">
+            <span>📋 Collection Profiles</span>
+            <button style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:.9rem;" id="btnNewProfileInline" title="Create new profile">+</button>
+          </div>
+          <div class="profiles-list" id="profilesList"></div>
+          <div class="profiles-dropdown-footer">
+            <input type="text" id="newProfileNameInput" placeholder="Profile name..." />
+            <button class="btn btn-primary" id="btnSaveProfile" style="padding:6px 12px;font-size:.8rem;">Save</button>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-ghost" id="btnImportURLs" title="Import addons from URLs">📥 Import</button>
+      <div class="settings-wrapper">
+        <button class="settings-toggle" id="settingsToggle" title="Settings" aria-label="Settings menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="6" x2="20" y2="6"/>
+            <line x1="4" y1="12" x2="20" y2="12"/>
+            <line x1="4" y1="18" x2="20" y2="18"/>
+          </svg>
+        </button>
+        <div class="settings-dropdown" id="settingsDropdown">
+          <button id="btnThemeToggle"><span class="settings-icon">🌓</span> Appearance</button>
+          <button id="btnCheckLinks"><span class="settings-icon">🩺</span> Link Health</button>
+          <button id="btnBackup"><span class="settings-icon">📦</span> Backup</button>
+          <button id="btnAutoBackup"><span class="settings-icon">⏰</span> Auto-Backup</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-section">
+    <div class="auth-indicator" id="authIndicator" title="Connection status"></div>
+    <div style="flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0;">
+      
+      <div class="seg-ctrl" id="authModeCtrl" style="align-self: flex-start;">
+        <button data-mode="account" class="active">Stremio Account</button>
+        <button data-mode="key">Auth Key</button>
+      </div>
+
+      <div id="loginAccountForm" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+        <input type="email" id="emailInput" placeholder="Email" style="flex: 1; min-width: 140px; margin: 0;" />
+        <input type="password" id="passwordInput" placeholder="Password" style="flex: 1; min-width: 140px; margin: 0;" />
+        <button class="btn btn-primary" id="btnDoLogin">Login</button>
+        <button class="btn btn-ghost btn-danger" id="btnLogout" style="display: none;">Logout</button>
+      </div>
+
+      <div id="loginKeyForm" style="display: none; flex-direction: column; gap: 6px; width: 100%;">
+        <input type="password" id="authKeyInput" placeholder="Paste your Stremio auth key here…" autocomplete="off" style="margin: 0;" />
+        <span style="font-size: 0.75rem; color: var(--text-dim); line-height: 1.4;">
+          <strong>How to get your key:</strong> Open Stremio (Web or Desktop), press <code>F12</code> to open Developer Tools, go to the <strong>Console</strong> tab, paste <code style="background: var(--bg-deep); border: 1px solid var(--border); padding: 2px 5px; border-radius: 4px; color: var(--accent-hi); user-select: all; cursor: pointer; word-break: break-all;">console.log(JSON.parse(localStorage.getItem('profile')).auth.key)</code> and press Enter.
+        </span>
+      </div>
+
+      <div style="font-size: 0.75rem; color: var(--success); margin-top: 6px; width: 100%; text-align: left; opacity: 0.9;">
+        🔒 <strong>Security Note:</strong> Your email and password are never stored. They are only used once to fetch your Auth Key, which is kept in a secure, HttpOnly session cookie.
+      </div>
+
+    </div>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-tab="addons" id="tabAddons">🔌 Addons</button>
+    <button class="nav-tab" data-tab="discover" id="tabDiscover">🔍 Discover</button>
+  </div>
+
+  <div id="addonsTabContent">
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" id="searchInput" placeholder="Search addons…" />
+    </div>
+    <div class="seg-ctrl" id="groupCtrl">
+      <button data-grp="none" class="active">All</button>
+      <button data-grp="type">By Type</button>
+    </div>
+    <div class="type-filter-bar" id="typeFilterBar">
+      <button class="type-filter-btn active" data-type="all">All</button>
+      <button class="type-filter-btn" data-type="stream">Stream</button>
+      <button class="type-filter-btn" data-type="catalog">Catalog</button>
+      <button class="type-filter-btn" data-type="subtitles">Subtitle</button>
+      <button class="type-filter-btn" data-type="other">Other</button>
+      <span class="filter-count" id="filterCount"></span>
+    </div>
+  </div>
+
+  <div class="stats-bar" id="statsBar" style="display:none">
+    <div class="stat">Total Addons <span class="stat-val" id="statTotal">0</span></div>
+    <div class="stat">Pinned <span class="stat-val" id="statPinned">0</span></div>
+  </div>
+
+  <div id="addonList">
+    <div class="status-panel" id="emptyState">
+      <div class="icon">🔌</div>
+      <h3>No addons loaded</h3>
+      <p>Login or paste your Auth Key above, then click <strong>Load Addons</strong>.</p>
+      <br/>
+      <button class="btn btn-primary" onclick="loadAddons()">Load Addons</button>
+    </div>
+  </div>
+
+  <div class="stats-bar" id="autobackupStatusBar" style="display:none">
+    <div class="autobackup-status" id="autobackupStatusText">
+      <span class="dot"></span>
+      <span>Auto-backup active</span>
+    </div>
+  </div>
+  </div>
+
+  <div class="discover-panel" id="discoverPanel">
+    <div class="discover-header">
+      <h2 id="discoverTitle">🔍 Discover Addons</h2>
+      <div class="discover-search">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" id="discoverSearchInput" placeholder="Search recommendations…" />
+      </div>
+    </div>
+    <div class="discover-grid" id="discoverGrid">
+      <div class="status-panel">
+        <div class="spinner" style="width:36px;height:36px;border-width:3px;margin:0 auto 16px"></div>
+        <p>Loading recommendations…</p>
+      </div>
+    </div>
+  </div>
+
+  <footer style="text-align: center; margin-top: 50px; padding-bottom: 10px;">
+    <a href="https://github.com/C0st1/Addon-Manager" target="_blank" style="color: var(--text-dim); text-decoration: none; display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 500; transition: color 0.2s;" onmouseover="this.style.color='var(--text-pri)'" onmouseout="this.style.color='var(--text-dim)'">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+      </svg>
+      View source on GitHub
+    </a>
+  </footer>
+
+</div><div class="undo-redo-float" id="undoRedoFloat">
+    <button class="btn-icon" id="btnUndo" title="Undo (Ctrl+Z)" disabled>↩</button>
+    <button class="btn-icon" id="btnRedo" title="Redo (Ctrl+Y)" disabled>↪</button>
+  </div>
+<div class="save-bar" id="saveBar">
+  <div class="save-bar-text">You have <strong id="changesCount">0</strong> unsaved change(s)</div>
+  <button class="btn btn-ghost btn-danger" id="btnDiscard">Discard</button>
+  <button class="btn btn-primary" id="btnSave">
+    <span id="saveBtnText">Save & Apply</span>
+    <span id="saveSpinner" class="spinner" style="display:none"></span>
+  </button>
+</div>
+
+<div id="toast"></div>
+
+<div class="modal-backdrop" id="backupModal">
+  <div class="modal">
+    <h2>📦 Backup & Restore</h2>
+    <p>Use separate tabs for exporting your current setup or importing a backup file.</p>
+    <div class="backup-tabs">
+      <button class="backup-tab active" id="tabBackupExport">Export</button>
+      <button class="backup-tab" id="tabBackupImport">Import</button>
+    </div>
+
+    <div class="backup-pane active" id="backupExportPane">
+      <label>Export JSON</label>
+      <textarea id="backupText" rows="8" placeholder="Your addon collection JSON will appear here…"></textarea>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="btnCopyBackup">Copy</button>
+        <button class="btn btn-primary" id="btnDownloadBackup">⬇ Download</button>
+      </div>
+    </div>
+
+    <div class="backup-pane" id="backupImportPane">
+      <label>Import JSON</label>
+      <textarea id="backupImportText" rows="8" placeholder="Paste backup JSON here or upload a file…"></textarea>
+      <div class="modal-actions">
+        <input type="file" id="backupFileInput" accept=".json" style="display: none;" />
+        <button class="btn btn-ghost" id="btnUploadBackup">⬆ Upload File</button>
+        <button class="btn btn-primary" id="btnRestoreBackup">↩ Restore</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('backupModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="confirmModal">
+  <div class="modal">
+    <h2 id="confirmTitle">Are you sure?</h2>
+    <p id="confirmBody"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="confirmCancel">Cancel</button>
+      <button class="btn btn-danger" id="confirmOk">Confirm</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal-backdrop" id="importModal">
+  <div class="modal">
+    <h2>📥 Import Addons from URLs</h2>
+    <p>Paste addon manifest URLs below, one per line. Each URL should point to a <code>manifest.json</code> file.</p>
+    <label>Manifest URLs</label>
+    <textarea id="importUrlsTextarea" rows="8" placeholder="https://example.com/addon1/manifest.json&#10;https://example.com/addon2/manifest.json&#10;https://example.com/addon3/manifest.json"></textarea>
+    <div class="import-progress" id="importProgress">
+      <div class="import-progress-bar"><div class="import-progress-fill" id="importProgressFill"></div></div>
+      <div class="import-results" id="importResults"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('importModal')">Close</button>
+      <button class="btn btn-primary" id="btnDoImport">📥 Import</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="autoBackupModal">
+  <div class="modal">
+    <h2>⏰ Auto-Backup Settings</h2>
+    <p>Automatically save snapshots of your addon collection.</p>
+    <div class="toggle-row">
+      <div class="toggle-info">
+        <h3>Enable Auto-Backup</h3>
+        <p>Save a snapshot every 5 minutes while on this page.</p>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="toggleAutoBackup">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div id="autobackupLastInfo" style="font-size:.8rem;color:var(--text-dim);margin-bottom:14px;"></div>
+    <label>Restore from Backup</label>
+    <div class="backup-list" id="autoBackupList"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('autoBackupModal')">Close</button>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop" id="cinemetaModal">
+  <div class="modal">
+    <h2>⚙️ Cinemeta Granular Control</h2>
+    <p style="margin-bottom: 20px;">Customize Stremio's default metadata provider.</p>
+    
+    <div class="toggle-row">
+      <div class="toggle-info">
+        <h3>Remove Cinemeta Search</h3>
+        <p>Stops Cinemeta results from appearing when you search.</p>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="toggleCinemetaSearch">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="toggle-row">
+      <div class="toggle-info">
+        <h3>Remove Cinemeta Catalogs</h3>
+        <p>Removes Popular, New, and Featured catalogs from your home screen.</p>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="toggleCinemetaCatalogs">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="toggle-row">
+      <div class="toggle-info">
+        <h3>Remove Cinemeta Metadata</h3>
+        <p>Stops Cinemeta from providing metadata for your movies and series.</p>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="toggleCinemetaMeta" class="danger-toggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="warning-box" id="cinemetaWarningBox">
+      <h4>⚠️ Critical Warning</h4>
+      <p>Removing Cinemeta metadata will permanently break native Trakt Sync and Calendar functionality across your Stremio clients.</p>
+    </div>
+
+    <div class="modal-actions" style="margin-top: 20px;">
+      <button class="btn btn-ghost btn-danger" id="btnResetCinemeta" style="margin-right: auto;">Reset to Defaults</button>
+      
+      <button class="btn btn-ghost" onclick="closeModal('cinemetaModal')">Cancel</button>
+      <button class="btn btn-primary" id="btnApplyCinemeta">Apply Changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   STREMIO ADDON MANAGER — client-side application
+═══════════════════════════════════════════════════════════════════ */
+
+const API_BASE = '__API_BASE__';
+
+// ─── State ────────────────────────────────────────────────────────
+let addons      = [];        
+let original    = [];        
+let pinned      = new Set(); 
+let groupMode   = 'none';    
+let sortable    = null;      
+let loggedIn    = false;     
+let disabledAddons = new Set(JSON.parse(localStorage.getItem('disabledAddons') || '[]'));
+let originalDisabledAddons = new Set();
+let disabledAddonStore = JSON.parse(localStorage.getItem('disabledAddonStore') || '{}');
+let disabledAddonPositions = JSON.parse(localStorage.getItem('disabledAddonPositions') || '{}');
+const addonHealth = new Map();
+
+const $ = id => document.getElementById(id);
+const addonList = $('addonList');
+
+function persistDisabledState() {
+  localStorage.setItem('disabledAddons', JSON.stringify([...disabledAddons]));
+  localStorage.setItem('disabledAddonStore', JSON.stringify(disabledAddonStore));
+  localStorage.setItem('disabledAddonPositions', JSON.stringify(disabledAddonPositions));
+}
+
+// ─── Auth Key (cookie-based session) ──────────────────────────────
+
+let authKeyTimeout;
+$('authKeyInput').addEventListener('input', (e) => {
+  const val = e.target.value.trim();
+  
+  // Clear the previous timer
+  clearTimeout(authKeyTimeout);
+  
+  // If the input looks like a valid auth key (usually 40+ characters), auto-load
+  if (val.length > 40) {
+    authKeyTimeout = setTimeout(() => {
+      bindSessionFromKey(val).then(() => { loggedIn = true; updateLoginUI(); return loadAddons(); }).catch(err => toast(err.message, 'error'));
+    }, 800); // Wait 600ms after they finish pasting/typing to prevent spamming
+  } else if (val.length === 0) {
+    // Optional: Clear the list if they delete the key
+    addons = [];
+    renderList();
+    $('authIndicator').classList.remove('connected');
+  }
+});
+
+async function bindSessionFromKey(authKey) {
+  const res = await fetch(`${API_BASE}/api/session`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ authKey }),
+  });
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'Could not start session');
+}
+
+// ─── Login / Auth Mode Toggling ───────────────────────────────────
+document.querySelectorAll('#authModeCtrl button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#authModeCtrl button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    
+    const mode = btn.dataset.mode;
+    $('loginAccountForm').style.display = mode === 'account' ? 'flex' : 'none';
+    $('loginKeyForm').style.display = mode === 'key' ? 'flex' : 'none';
+  });
+});
+
+// Update UI based on login state
+function updateLoginUI() {
+  if (loggedIn) {
+    $('emailInput').style.display = 'none';
+    $('passwordInput').style.display = 'none';
+    $('btnDoLogin').style.display = 'none';
+    $('btnLogout').style.display = 'inline-flex';
+  } else {
+    $('emailInput').style.display = 'block';
+    $('passwordInput').style.display = 'block';
+    $('btnDoLogin').style.display = 'inline-flex';
+    $('btnLogout').style.display = 'none';
+    $('authIndicator').classList.remove('connected');
+  }
+}
+
+// Handle Stremio Login (OPTIMIZED DIRECT-TO-STREMIO)
+$('btnDoLogin').addEventListener('click', async () => {
+  const email = $('emailInput').value.trim();
+  const password = $('passwordInput').value.trim();
+  if (!email || !password) { toast('Please enter email and password', 'warning'); return; }
+
+  const btn = $('btnDoLogin');
+  btn.disabled = true; btn.textContent = 'Logging in...';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email, password, type: 'Login' })
+    });
+    const data = await res.json();
+
+    if (!data.ok) throw new Error(data.error || 'Login failed');
+    loggedIn = true;
+    $('passwordInput').value = ''; 
+    updateLoginUI();
+    toast('Login successful!', 'success');
+    loadAddons();
+  } catch (err) {
+    toast(err.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Login';
+  }
+});
+
+// Handle Logout
+$('btnLogout').addEventListener('click', async () => {
+  try {
+    await fetch(`${API_BASE}/api/session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ logout: true }),
+    });
+  } catch {}
+  $('authKeyInput').value = '';
+  loggedIn = false;
+  addons = [];
+  renderList();
+  updateLoginUI();
+  toast('Logged out', 'info');
+});
+
+// Run once on startup
+updateLoginUI();
+
+// ─── Group selector ───────────────────────────────────────────────
+document.querySelectorAll('#groupCtrl button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#groupCtrl button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    groupMode = btn.dataset.grp;
+    renderList();
+  });
+});
+
+// ─── Search (Debounced) ───────────────────────────────────────────
+let searchTimeout;
+$('searchInput').addEventListener('input', () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    applyFilter();
+  }, 300); // Debounced 300ms after typing stops before filtering
+});
+
+// ─── Refresh ─────────────────────────────────────────────────────
+$('btnRefresh').addEventListener('click', loadAddons);
+$('btnThemeToggle').addEventListener('click', () => { toggleTheme(); closeSettingsDropdown(); });
+$('btnCheckLinks').addEventListener('click', () => { runBrokenLinkCheck(); closeSettingsDropdown(); });
+
+// ─── Backup ───────────────────────────────────────────────────────
+$('btnBackup').addEventListener('click', () => { openBackupModal(); closeSettingsDropdown(); });
+
+// ─── Settings Dropdown ───────────────────────────────────────────
+function toggleSettingsDropdown() {
+  const toggle = $('settingsToggle');
+  const dropdown = $('settingsDropdown');
+  const isOpen = dropdown.classList.contains('open');
+  if (isOpen) {
+    closeSettingsDropdown();
+  } else {
+    dropdown.classList.add('open');
+    toggle.classList.add('open');
+  }
+}
+
+function closeSettingsDropdown() {
+  $('settingsDropdown').classList.remove('open');
+  $('settingsToggle').classList.remove('open');
+}
+
+$('settingsToggle').addEventListener('click', (e) => {
+  e.stopPropagation();
+  toggleSettingsDropdown();
+});
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.settings-wrapper')) {
+    closeSettingsDropdown();
+  }
+});
+
+function initTheme() {
+  const stored = localStorage.getItem('addonManagerTheme');
+  const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+  const mode = stored || (prefersLight ? 'light' : 'dark');
+  document.body.classList.toggle('light-theme', mode === 'light');
+}
+
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light-theme');
+  localStorage.setItem('addonManagerTheme', isLight ? 'light' : 'dark');
+}
+
+initTheme();
+
+// ─── Save / Discard ───────────────────────────────────────────────
+$('btnSave').addEventListener('click', saveAddons);
+$('btnDiscard').addEventListener('click', () => {
+  addons = JSON.parse(JSON.stringify(original));
+  disabledAddons = new Set(originalDisabledAddons);
+  persistDisabledState();
+  pinned.clear();
+  renderList();
+  hideSaveBar();
+  toast('Changes discarded', 'warning');
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   LOAD ADDONS
+═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
+   LOAD ADDONS (OPTIMIZED DIRECT-TO-STREMIO)
+═══════════════════════════════════════════════════════════════════ */
+async function loadAddons() {
+  addonList.innerHTML = `<div class="status-panel">
+    <div class="spinner" style="width:36px;height:36px;border-width:3px;margin:0 auto 16px"></div>
+    <p>Fetching your addon collection from Cloud…</p>
+  </div>`;
+  $('statsBar').style.display = 'none';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/addons/get`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+
+    if (!data.ok) throw new Error(data.error || 'Unknown error');
+    const cloudAddons = data.addons || [];
+    const cloudUrls = new Set(cloudAddons.map(a => a.transportUrl || a.manifest?.transportUrl).filter(Boolean));
+
+    // Reset disabled state on every load — only keep entries that were previously saved
+    // (i.e. their URL is NOT present in the live cloud list, meaning Stremio already excludes them).
+    // This prevents the UI bug where unsaved disables survive a page refresh.
+    const savedDisabledStore = {};
+    const savedDisabledPositions = {};
+    for (const [url, addon] of Object.entries(disabledAddonStore)) {
+      if (!cloudUrls.has(url)) {
+        // This addon is genuinely absent from Stremio's live list → it was saved-disabled
+        savedDisabledStore[url] = addon;
+        savedDisabledPositions[url] = disabledAddonPositions[url];
+      }
+      // If the URL IS in cloudUrls, the addon is active in Stremio → discard the stale disable
+    }
+    disabledAddonStore = savedDisabledStore;
+    disabledAddonPositions = savedDisabledPositions;
+
+    const merged = [...cloudAddons];
+    const disabledEntries = Object.entries(disabledAddonStore)
+      .filter(([url]) => !cloudUrls.has(url))
+      .sort((a, b) => (disabledAddonPositions[a[0]] ?? Number.MAX_SAFE_INTEGER) - (disabledAddonPositions[b[0]] ?? Number.MAX_SAFE_INTEGER));
+    for (const [url, addon] of disabledEntries) {
+      merged.push(addon);
+    }
+    addons = merged;
+    disabledAddons = new Set(Object.keys(disabledAddonStore));
+    originalDisabledAddons = new Set(disabledAddons);
+    persistDisabledState();
+    addonHealth.clear();
+    original = JSON.parse(JSON.stringify(addons));
+
+    $('authIndicator').classList.add('connected');
+    loggedIn = true;
+    updateLoginUI();
+    renderList();
+    hideSaveBar();
+    toast(`Loaded ${addons.length} addon(s)`, 'success');
+  } catch (err) {
+    $('authIndicator').classList.remove('connected');
+    addonList.innerHTML = `<div class="status-panel">
+      <div class="icon">⚠️</div><h3>Could not load addons</h3>
+      <p>${escHtml(err.message)}</p><br/>
+      <button class="btn btn-primary" onclick="loadAddons()">Try Again</button>
+    </div>`;
+    toast(err.message, 'error');
+  }
+}
+   
+/* ═══════════════════════════════════════════════════════════════════
+   RENDER LIST
+═══════════════════════════════════════════════════════════════════ */
+function renderList() {
+  if (!addons.length) {
+    addonList.innerHTML = `<div class="status-panel" id="emptyState">
+      <div class="icon">🔌</div><h3>No addons loaded</h3>
+      <p>Click Refresh to load your installed addons.</p>
+    </div>`;
+    $('statsBar').style.display = 'none';
+    return;
+  }
+
+  if (sortable) { try { sortable.destroy(); } catch(e){} sortable = null; }
+  updateStats();
+
+  if (groupMode === 'type') renderGrouped();
+  else renderFlat();
+
+  applyFilter();
+}
+
+function renderFlat() {
+  addonList.innerHTML = '';
+  // Batch DOM manipulations to prevent UI freezing
+  const fragment = document.createDocumentFragment();
+  addons.forEach((addon, idx) => {
+    fragment.appendChild(buildCard(addon, idx));
+  });
+  addonList.appendChild(fragment);
+  initSortable(addonList);
+}
+
+function renderGrouped() {
+  const groups = groupByType(addons);
+  addonList.innerHTML = '';
+
+  groups.forEach(({ label, color, items }) => {
+    const section = document.createElement('div');
+    section.className = 'group-section';
+    section.dataset.group = label;
+
+    const hdr = document.createElement('div');
+    hdr.className = 'group-header';
+    hdr.innerHTML = `<span class="group-chevron">▾</span><span class="group-title" style="color:${color}">${label}</span><span class="group-count">${items.length}</span>`;
+    hdr.addEventListener('click', () => {
+      hdr.classList.toggle('collapsed');
+      body.classList.toggle('collapsed');
+    });
+
+    const body = document.createElement('div');
+    body.className = 'group-body';
+    body.style.display = 'flex'; body.style.flexDirection = 'column'; body.style.gap = '6px';
+
+    items.forEach(({ addon, idx }) => body.appendChild(buildCard(addon, idx)));
+
+    section.appendChild(hdr); section.appendChild(body);
+    addonList.appendChild(section);
+    initSortable(body);
+  });
+}
+
+function buildCard(addon, idx) {
+  const url     = addon.transportUrl || addon.manifest?.transportUrl || '';
+  const man     = addon.manifest || addon;
+  const name    = man.name    || 'Unnamed Addon';
+  const version = man.version || '';
+  const desc    = man.description || man.shortDescription || '';
+  const logo    = man.logo || man.icon || '';
+  const types   = man.types   || [];
+  const res     = man.resources || [];
+
+  const isPinned   = pinned.has(url);
+  const isDisabled = disabledAddons.has(url);
+
+// Safely get the ID, defaulting to an empty string if it's missing
+  const addonId = (man.id || '').toLowerCase();
+
+  // Protect Addon Manager, Local Files, and ANY addon containing "cinemeta"
+  const isProtected = 
+    addonId === 'community.addon-manager' || 
+    addonId === 'local' || 
+    addonId === 'org.stremio.local' ||
+    addonId.includes('cinemeta'); // Catches official.cinemeta, com.linvo.cinemeta, etc.
+  
+  // Check if the addon has a configuration page
+  const isConfigurable = man.behaviorHints?.configurable === true;
+
+    const health = addonHealth.get(url);
+  const card = document.createElement('div');
+  card.className = 'addon-card' + (isPinned ? ' pinned-addon' : '') + (isDisabled ? ' disabled-addon' : '');
+  card.dataset.url  = url; card.dataset.idx  = idx; card.dataset.name = name.toLowerCase();
+  card.draggable    = false; 
+
+  // ── Helper: create SVG element from controlled markup (no user data) ──
+  function svgFromStr(str) {
+    const tmp = document.createElement('span');
+    tmp.innerHTML = str;
+    return tmp.firstElementChild;
+  }
+
+  const iconPowerOn = svgFromStr('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>');
+  const iconPowerOff = svgFromStr('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1 2.5 8.04"/><path d="M20.66 20.66A9 9 0 0 1 5.64 5.64"/><line x1="12" y1="2" x2="12" y2="12"/><line x1="2" y1="2" x2="22" y2="22"/></svg>');
+
+  // ── Order badge ──
+  const orderBadge = document.createElement('span');
+  orderBadge.className = 'order-badge';
+  orderBadge.textContent = idx + 1;
+  card.appendChild(orderBadge);
+
+  // ── Drag handle (no user data — controlled innerHTML is safe) ──
+  const dragHandle = document.createElement('div');
+  dragHandle.className = 'drag-handle';
+  dragHandle.title = 'Drag to reorder';
+  dragHandle.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5"  r="2"/><circle cx="15" cy="5"  r="2"/><circle cx="9" cy="12" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="9" cy="19" r="2"/><circle cx="15" cy="19" r="2"/></svg>';
+  card.appendChild(dragHandle);
+
+  // ── Icon (user-controlled logo URL — built via DOM APIs) ──
+  const iconContainer = document.createElement('div');
+  iconContainer.className = 'addon-icon';
+  if (logo) {
+    const img = document.createElement('img');
+    img.src = logo;
+    img.alt = '';
+    img.loading = 'lazy';
+    img.addEventListener('error', function() {
+      iconContainer.textContent = '';
+      const placeholder = document.createElement('span');
+      placeholder.className = 'addon-icon-placeholder';
+      placeholder.textContent = '\u{1F50C}';
+      iconContainer.appendChild(placeholder);
+    });
+    iconContainer.appendChild(img);
+  } else {
+    const placeholder = document.createElement('span');
+    placeholder.className = 'addon-icon-placeholder';
+    placeholder.textContent = '\u{1F50C}';
+    iconContainer.appendChild(placeholder);
+  }
+  card.appendChild(iconContainer);
+
+  // ── Info section (user-controlled text — always via textContent) ──
+  const infoDiv = document.createElement('div');
+  infoDiv.className = 'addon-info';
+
+  const nameDiv = document.createElement('div');
+  nameDiv.className = 'addon-name';
+  nameDiv.textContent = name;
+
+  const versionSpan = document.createElement('span');
+  versionSpan.className = 'addon-version';
+  versionSpan.textContent = 'v' + (version || '');
+  nameDiv.appendChild(document.createTextNode(' '));
+  nameDiv.appendChild(versionSpan);
+
+  if (isPinned) {
+    const pinBadge = document.createElement('span');
+    pinBadge.title = 'Pinned';
+    pinBadge.style.cssText = 'color:var(--pin-color);font-size:.7rem';
+    pinBadge.textContent = '\u{1F4CC}';
+    nameDiv.appendChild(pinBadge);
+  }
+
+  if (isProtected) {
+    const lockBadge = document.createElement('span');
+    lockBadge.className = 'protected-lock';
+    lockBadge.title = 'Core addon cannot be removed';
+    lockBadge.textContent = '\u{1F512}';
+    nameDiv.appendChild(lockBadge);
+  }
+
+  if (health != null) {
+    const healthSpan = document.createElement('span');
+    healthSpan.className = health ? 'link-status-ok' : 'link-status-bad';
+    healthSpan.title = health ? 'Transport URL reachable' : 'Transport URL appears unavailable';
+    healthSpan.textContent = '\u25CF';
+    nameDiv.appendChild(healthSpan);
+  }
+
+  infoDiv.appendChild(nameDiv);
+
+  const descDiv = document.createElement('div');
+  descDiv.className = 'addon-desc';
+  descDiv.textContent = desc;
+  infoDiv.appendChild(descDiv);
+
+  // ── Tags (type names are from manifests — use textContent for safety) ──
+  const allRes = [...new Set([...types, ...res.map(r => typeof r === 'string' ? r : r.name || '')])];
+  const tagsDiv = document.createElement('div');
+  tagsDiv.className = 'addon-tags';
+  allRes.slice(0, 4).forEach(t => {
+    const tag = document.createElement('span');
+    tag.className = 'tag ' + tagClass(t);
+    tag.textContent = t;
+    tagsDiv.appendChild(tag);
+  });
+  infoDiv.appendChild(tagsDiv);
+
+  card.appendChild(infoDiv);
+
+  // ── Card actions ──
+  const actionsDiv = document.createElement('div');
+  actionsDiv.className = 'card-actions';
+
+  // Pin button
+  const pinBtn = document.createElement('button');
+  pinBtn.className = 'btn-icon pin' + (isPinned ? ' pinned' : '');
+  pinBtn.title = isPinned ? 'Unpin' : 'Pin to top';
+  pinBtn.dataset.url = url;
+  pinBtn.textContent = '\u{1F4CC}';
+  actionsDiv.appendChild(pinBtn);
+
+  // Toggle visibility button
+  if (isProtected) {
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'btn-icon toggle-vis';
+    toggleBtn.title = 'Core addon cannot be disabled';
+    toggleBtn.disabled = true;
+    toggleBtn.style.cssText = 'opacity:.3;cursor:not-allowed;pointer-events:none;';
+    toggleBtn.appendChild(iconPowerOn.cloneNode(true));
+    actionsDiv.appendChild(toggleBtn);
+  } else {
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'btn-icon toggle-vis' + (isDisabled ? ' disabled-addon' : '');
+    toggleBtn.title = isDisabled ? 'Enable addon' : 'Temporarily disable addon';
+    toggleBtn.dataset.url = url;
+    toggleBtn.appendChild((isDisabled ? iconPowerOff : iconPowerOn).cloneNode(true));
+    actionsDiv.appendChild(toggleBtn);
+  }
+
+  // Copy URL button
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'btn-icon copy-url';
+  copyBtn.title = 'Copy manifest URL';
+  copyBtn.dataset.url = url;
+  copyBtn.textContent = '\u{1F517}';
+  actionsDiv.appendChild(copyBtn);
+
+  // Configure button (if configurable)
+  if (isConfigurable) {
+    const configBtn = document.createElement('button');
+    configBtn.className = 'btn-icon config-addon';
+    configBtn.title = 'Configure addon';
+    configBtn.dataset.url = url;
+    configBtn.textContent = '\u2699\uFE0F';
+    actionsDiv.appendChild(configBtn);
+  }
+
+  // Cinemeta config button
+  if (addonId.includes('cinemeta')) {
+    const cinemetaBtn = document.createElement('button');
+    cinemetaBtn.className = 'btn-icon cinemeta-config';
+    cinemetaBtn.title = 'Cinemeta Advanced Settings';
+    cinemetaBtn.dataset.url = url;
+    cinemetaBtn.textContent = '\u{1F39B}\uFE0F';
+    actionsDiv.appendChild(cinemetaBtn);
+  }
+
+  // Remove button
+  if (isProtected) {
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'btn-icon danger';
+    removeBtn.title = 'Core addon cannot be removed';
+    removeBtn.disabled = true;
+    removeBtn.style.cssText = 'opacity:.3;cursor:not-allowed;pointer-events:none;';
+    removeBtn.textContent = '\u{1F5D1}';
+    actionsDiv.appendChild(removeBtn);
+  } else {
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'btn-icon danger remove';
+    removeBtn.title = 'Remove addon';
+    removeBtn.dataset.url = url;
+    removeBtn.dataset.name = name;
+    removeBtn.textContent = '\u{1F5D1}';
+    actionsDiv.appendChild(removeBtn);
+  }
+
+  card.appendChild(actionsDiv);
+
+  // Standard movement & pinning listeners
+  card.querySelector('.pin').addEventListener('click', e => { e.stopPropagation(); togglePin(url); });
+  if (!isProtected) {
+    card.querySelector('.toggle-vis').addEventListener('click', e => { e.stopPropagation(); toggleAddonDisabled(url); });
+  }
+  
+  // New Copy URL listener
+  card.querySelector('.copy-url').addEventListener('click', e => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(url)
+      .then(() => toast('Manifest URL copied!', 'success'))
+      .catch(() => toast('Copy failed', 'error'));
+  });
+
+  // New Configure listener (only bound if the addon is configurable)
+  if (isConfigurable) {
+    card.querySelector('.config-addon').addEventListener('click', e => {
+      e.stopPropagation();
+      // Standard Stremio convention: swap /manifest.json for /configure
+      const configUrl = url.replace(/\/manifest\.json$/i, '/configure');
+      window.open(configUrl, '_blank');
+    });
+  }
+
+  // NEW: Bind Cinemeta config listener
+  if (addonId.includes('cinemeta')) {
+    card.querySelector('.cinemeta-config').addEventListener('click', e => {
+      e.stopPropagation();
+      openCinemetaSettings(url);
+    });
+  }
+
+  // Remove listener (only bound if not protected)
+  if (!isProtected) {
+    card.querySelector('.remove').addEventListener('click', e => { 
+      e.stopPropagation(); 
+      confirmRemove(url, name); 
+    });
+  }
+
+  return card;
+}
+
+function initSortable(container) {
+  sortable = new Sortable(container, {
+    animation: 200, handle: '.drag-handle', ghostClass: 'dragging', chosenClass: 'dragging', dragClass: 'dragging', filter: '.pinned-addon, .disabled-addon',
+    scroll: true, bubbleScroll: true, scrollSensitivity: 120, scrollSpeed: 18,
+    onStart: e => e.item.classList.add('dragging'),
+    onEnd: e => { e.item.classList.remove('dragging'); syncOrderFromDOM(); markChanged(); },
+  });
+}
+
+function syncOrderFromDOM() {
+  const cards = addonList.querySelectorAll('.addon-card');
+  const urlToAddon = Object.fromEntries(addons.map(a => [a.transportUrl || a.manifest?.transportUrl, a]));
+  const newOrder = [];
+  cards.forEach(card => { const a = urlToAddon[card.dataset.url]; if (a) newOrder.push(a); });
+  addons.forEach(a => { if (!newOrder.includes(a)) newOrder.push(a); });
+  addons = newOrder;
+  updateOrderBadges();
+}
+
+function togglePin(url) {
+  if (pinned.has(url)) { pinned.delete(url); } 
+  else {
+    pinned.add(url);
+    const idx = addons.findIndex(a => (a.transportUrl || a.manifest?.transportUrl) === url);
+    if (idx > 0) { addons.unshift(addons.splice(idx, 1)[0]); }
+  }
+  renderList(); markChanged();
+}
+
+function toggleAddonDisabled(url) {
+  const currentIndex = addons.findIndex(a => (a.transportUrl || a.manifest?.transportUrl) === url);
+  if (currentIndex === -1) return;
+
+  if (disabledAddons.has(url)) {
+    disabledAddons.delete(url);
+    const addon = addons.splice(currentIndex, 1)[0];
+    const restoreIndex = Number.isInteger(disabledAddonPositions[url]) ? disabledAddonPositions[url] : addons.length;
+    const targetIndex = Math.max(0, Math.min(restoreIndex, addons.length));
+    addons.splice(targetIndex, 0, addon);
+    delete disabledAddonPositions[url];
+    delete disabledAddonStore[url];
+  } else {
+    const addon = addons[currentIndex];
+    if (addon) {
+      disabledAddons.add(url);
+      disabledAddonStore[url] = addon;
+      disabledAddonPositions[url] = currentIndex;
+      addons.splice(currentIndex, 1);
+      addons.push(addon);
+    }
+  }
+  persistDisabledState();
+  renderList();
+  markChanged();
+  toast(disabledAddons.has(url) ? 'Addon disabled (click Save to apply in Stremio)' : 'Addon re-enabled (click Save to apply in Stremio)', 'info');
+}
+
+function confirmRemove(url, name) {
+  confirm_(`Remove "${name}"?`, `This will remove the addon from your collection. You can reinstall it later.`, () => removeAddon(url));
+}
+
+function removeAddon(url) {
+  addons = addons.filter(a => (a.transportUrl || a.manifest?.transportUrl) !== url);
+  disabledAddons.delete(url);
+  delete disabledAddonStore[url];
+  delete disabledAddonPositions[url];
+  persistDisabledState();
+  renderList(); markChanged();
+  toast(`Addon removed`, 'warning');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SAVE ADDONS
+═══════════════════════════════════════════════════════════════════ */
+async function saveAddons() {
+  $('saveBtnText').textContent = 'Saving…';
+  $('saveSpinner').style.display = 'inline-block';
+  $('btnSave').disabled = true;
+
+  try {
+    const activeAddons = addons.filter(a => !disabledAddons.has(a.transportUrl || a.manifest?.transportUrl));
+    let payload = { addons: activeAddons };
+    if (window.CompressionStream) payload = await buildCompressedPayload(payload);
+
+    const res = await fetch(`${API_BASE}/api/addons/set`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    
+    const data = await res.json();
+
+    if (!data.ok) throw new Error(data.error || 'Save failed');
+
+    original = JSON.parse(JSON.stringify(addons));
+    const nextStore = {};
+    const nextPositions = {};
+    disabledAddons.forEach(url => {
+      const addon = addons.find(a => (a.transportUrl || a.manifest?.transportUrl) === url);
+      if (addon) {
+        nextStore[url] = addon;
+        nextPositions[url] = disabledAddonPositions[url] ?? addons.findIndex(a => (a.transportUrl || a.manifest?.transportUrl) === url);
+      }
+    });
+    disabledAddonStore = nextStore;
+    disabledAddonPositions = nextPositions;
+    originalDisabledAddons = new Set(disabledAddons);
+    persistDisabledState();
+    hideSaveBar();
+    toast('✓ Addon order saved!', 'success');
+  } catch (err) {
+    toast(`Save failed: ${err.message}`, 'error');
+  } finally {
+    $('saveBtnText').textContent = 'Save & Apply';
+    $('saveSpinner').style.display = 'none';
+    $('btnSave').disabled = false;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   BACKUP / RESTORE
+═══════════════════════════════════════════════════════════════════ */
+function setBackupTab(tab) {
+  const exportTab = $('tabBackupExport');
+  const importTab = $('tabBackupImport');
+  const exportPane = $('backupExportPane');
+  const importPane = $('backupImportPane');
+  const isExport = tab === 'export';
+  exportTab.classList.toggle('active', isExport);
+  importTab.classList.toggle('active', !isExport);
+  exportPane.classList.toggle('active', isExport);
+  importPane.classList.toggle('active', !isExport);
+}
+
+function openBackupModal() {
+  $('backupText').value = JSON.stringify(addons, null, 2);
+  setBackupTab('export');
+  openModal('backupModal');
+}
+
+$('tabBackupExport').addEventListener('click', () => setBackupTab('export'));
+$('tabBackupImport').addEventListener('click', () => setBackupTab('import'));
+
+$('btnCopyBackup').addEventListener('click', () => { 
+  navigator.clipboard.writeText($('backupText').value)
+    .then(() => toast('Copied!', 'success'))
+    .catch(() => toast('Copy failed', 'error')); 
+});
+
+$('btnDownloadBackup').addEventListener('click', () => { 
+  const a = document.createElement('a'); 
+  a.href = URL.createObjectURL(new Blob([$('backupText').value], { type: 'application/json' })); 
+  a.download = `stremio-addons.json`; 
+  a.click(); 
+  toast('Download started', 'success'); 
+});
+
+// --- NEW: File Upload Logic ---
+$('btnUploadBackup').addEventListener('click', () => {
+  $('backupFileInput').click();
+});
+
+$('backupFileInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    try {
+      const content = event.target.result;
+      const parsed = JSON.parse(content);
+      if (!Array.isArray(parsed)) throw new Error('Root must be an array');
+      
+      // Populate import textarea so user can review before restoring
+      $('backupImportText').value = JSON.stringify(parsed, null, 2);
+      setBackupTab('import');
+      toast('File loaded! Click Restore to apply.', 'success');
+    } catch (err) {
+      toast(`Invalid JSON file: ${err.message}`, 'error');
+    }
+    // Clear the input so the same file can be uploaded again if needed
+    $('backupFileInput').value = ''; 
+  };
+  reader.readAsText(file);
+});
+
+$('btnRestoreBackup').addEventListener('click', () => {
+  try {
+    const parsed = JSON.parse($('backupImportText').value);
+    if (!Array.isArray(parsed)) throw new Error('Root must be an array');
+    if (parsed.length > 500) throw new Error('Backup contains too many addons (max 500)');
+
+    // Validate each addon entry has basic structure
+    for (let i = 0; i < parsed.length; i++) {
+      const addon = parsed[i];
+      if (!addon || typeof addon !== 'object') {
+        throw new Error(`Invalid addon at index ${i}: not an object`);
+      }
+      const url = addon.transportUrl || (addon.manifest && addon.manifest.transportUrl);
+      if (!url || typeof url !== 'string') {
+        throw new Error(`Invalid addon at index ${i}: missing transportUrl`);
+      }
+      if (!/^https?:\/\//i.test(url)) {
+        throw new Error(`Invalid addon at index ${i}: transportUrl must be HTTP(S)`);
+      }
+    }
+
+    addons = parsed;
+    renderList();
+    markChanged();
+    closeModal('backupModal');
+    toast(`Restored ${addons.length} addon(s) — click Save to apply`, 'warning');
+  } catch (err) {
+    toast(`Invalid backup: ${err.message}`, 'error');
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   FILTER / STATS
+═══════════════════════════════════════════════════════════════════ */
+function applyFilter() {
+  const q = $('searchInput').value.toLowerCase().trim();
+  const cards = addonList.querySelectorAll('.addon-card');
+  cards.forEach(card => {
+    const hide = !card.dataset.name.includes(q);
+    card.classList.toggle('hidden', hide);
+  });
+}
+
+function updateStats() {
+  $('statTotal').textContent = addons.length;
+  $('statPinned').textContent = pinned.size;
+  $('statsBar').style.display = addons.length > 0 ? 'flex' : 'none';
+}
+
+function markChanged() {
+  const nChanges = changesCount();
+  $('changesCount').textContent = nChanges;
+  if (nChanges > 0) showSaveBar(); else hideSaveBar();
+}
+
+function changesCount() {
+  const disabledDelta =
+    [...disabledAddons].filter(url => !originalDisabledAddons.has(url)).length +
+    [...originalDisabledAddons].filter(url => !disabledAddons.has(url)).length;
+  if (addons.length !== original.length) return Math.abs(addons.length - original.length) + disabledDelta;
+  
+  let diff = 0;
+  addons.forEach((a, i) => { 
+    const o = original[i]; 
+    const urlA = a.transportUrl || a.manifest?.transportUrl;
+    const urlO = o ? (o.transportUrl || o.manifest?.transportUrl) : null;
+    
+    // Check if the order changed OR if the deep manifest JSON was patched
+    if (!o || urlA !== urlO || JSON.stringify(a.manifest) !== JSON.stringify(o.manifest)) {
+      diff++; 
+    }
+  });
+  
+  return diff + disabledDelta;
+}
+
+function showSaveBar() { $('saveBar').classList.add('visible'); }
+function hideSaveBar()  { $('saveBar').classList.remove('visible'); }
+function updateOrderBadges() { addonList.querySelectorAll('.addon-card').forEach((card, i) => { const badge = card.querySelector('.order-badge'); if (badge) badge.textContent = i + 1; }); }
+
+function groupByType(list) {
+  const map = {};
+  list.forEach((addon, idx) => {
+    const man = addon.manifest || addon;
+    const types = [...(man.types || []), ...(man.resources || []).map(r => typeof r === 'string' ? r : r.name || '')];
+    const key = types.length ? primaryType(types) : 'other';
+    if (!map[key]) map[key] = []; map[key].push({ addon, idx });
+  });
+  const colorMap = { stream:'#7ab0e8', catalog:'#7ae8b0', meta:'#e87ae8', subtitles:'#e8e87a', other:'#8a88aa' };
+  return Object.entries(map).map(([label, items]) => ({ label, items, color: colorMap[label] || '#8a88aa' }));
+}
+function primaryType(types) {
+  if (types.includes('stream')) return 'stream'; if (types.includes('catalog')) return 'catalog';
+  if (types.includes('meta')) return 'meta'; if (types.includes('subtitles')) return 'subtitles'; return types[0] || 'other';
+}
+function tagClass(t) { return ['stream','catalog','meta','subtitles'].includes(t) ? t : 'other'; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════════════════════ */
+async function apiFetch(path, body) {
+  return fetch(API_BASE + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+}
+
+async function runBrokenLinkCheck() {
+  try {
+    const res = await apiFetch('/api/addons/check-links', {});
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Link check failed');
+    addonHealth.clear();
+    data.checks.forEach(c => addonHealth.set(c.url, !!c.ok));
+    renderList();
+    const broken = data.checks.filter(c => !c.ok && !c.skipped).length;
+    const brokenText = broken === 1 ? '1 addon link looks broken' : `${broken} addon links look broken`;
+    toast(broken ? brokenText : 'All addon links look healthy', broken ? 'warning' : 'success');
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+async function buildCompressedPayload({ addons }) {
+  const input = new TextEncoder().encode(JSON.stringify(addons));
+  const stream = new Blob([input]).stream().pipeThrough(new CompressionStream('gzip'));
+  const compressed = await new Response(stream).arrayBuffer();
+  const bytes = new Uint8Array(compressed);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]);
+  return { compressedAddons: btoa(binary), compression: 'gzip' };
+}
+function escHtml(s) { return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+let toastTimer;
+function toast(msg, type = 'info') { const el = $('toast'); el.textContent = msg; el.className = `show ${type}`; clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.className = ''; }, 3200); }
+
+function openModal(id)  { $(id).classList.add('open');    }
+function closeModal(id) { $(id).classList.remove('open'); }
+document.querySelectorAll('.modal-backdrop').forEach(bd => { bd.addEventListener('click', e => { if (e.target === bd) closeModal(bd.id); }); });
+
+let confirmCallback = null;
+function confirm_(title, body, cb) { $('confirmTitle').textContent = title; $('confirmBody').textContent = body; confirmCallback = cb; openModal('confirmModal'); }
+$('confirmOk').addEventListener('click', () => { closeModal('confirmModal'); if (confirmCallback) confirmCallback(); confirmCallback = null; });
+$('confirmCancel').addEventListener('click', () => { closeModal('confirmModal'); confirmCallback = null; });
+
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   i18n — MULTI-LANGUAGE SUPPORT
+═══════════════════════════════════════════════════════════════════ */
+const TRANSLATIONS = {
+  en: {
+    addonManager: 'Addon Manager',
+    subtitle: 'Reorder, organize, and manage your Stremio addons',
+    refresh: 'Refresh',
+    appearance: 'Appearance',
+    linkHealth: 'Link Health',
+    backup: 'Backup',
+    settings: 'Settings',
+    searchAddons: 'Search addons…',
+    all: 'All',
+    byType: 'By Type',
+    totalAddons: 'Total Addons',
+    pinned: 'Pinned',
+    noAddonsLoaded: 'No addons loaded',
+    loginOrPaste: 'Login or paste your Auth Key above, then click Load Addons.',
+    loadAddons: 'Load Addons',
+    saveApply: 'Save & Apply',
+    discard: 'Discard',
+    unsavedChanges: 'unsaved change(s)',
+    login: 'Login',
+    logout: 'Logout',
+    stremioAccount: 'Stremio Account',
+    authKey: 'Auth Key',
+    email: 'Email',
+    password: 'Password',
+    searchPlaceholder: 'Search addons…',
+    addonsTab: 'Addons',
+    discoverTab: 'Discover',
+    discoverTitle: 'Discover Addons',
+    searchRecommendations: 'Search recommendations…',
+    install: 'Install',
+    installed: 'Installed',
+    import: 'Import',
+    importTitle: 'Import Addons from URLs',
+    importDesc: 'Paste addon manifest URLs below, one per line.',
+    importPlaceholder: 'https://example.com/addon1/manifest.json',
+    doImport: 'Import',
+    undo: 'Undo',
+    redo: 'Redo',
+    profiles: 'Profiles',
+    saveProfile: 'Save',
+    loadProfile: 'Load',
+    deleteProfile: 'Delete',
+    collectionProfiles: 'Collection Profiles',
+    profileName: 'Profile name...',
+    autoBackup: 'Auto-Backup',
+    enableAutoBackup: 'Enable Auto-Backup',
+    autoBackupDesc: 'Save a snapshot every 5 minutes while on this page.',
+    restoreBackup: 'Restore from Backup',
+    stream: 'Stream',
+    catalog: 'Catalog',
+    subtitle: 'Subtitle',
+    other: 'Other',
+    loading: 'Loading…',
+    fetchingCloud: 'Fetching your addon collection from Cloud…',
+    loginSuccessful: 'Login successful!',
+    loggedOut: 'Logged out',
+    pleaseEnterEmailPass: 'Please enter email and password',
+    loggingIn: 'Logging in...',
+    addonRemoved: 'Addon removed',
+    saveFailed: 'Save failed',
+    addonOrderSaved: 'Addon order saved!',
+    saved: 'Saved!',
+    copyFailed: 'Copy failed',
+    downloadStarted: 'Download started',
+    allLinksHealthy: 'All addon links look healthy',
+    linksBroken: 'addon links look broken',
+    linkLooksBroken: 'addon link looks broken',
+    changesDiscarded: 'Changes discarded',
+    confirmRemove: 'Remove',
+    removeConfirm: 'This will remove the addon from your collection. You can reinstall it later.',
+    coreAddon: 'Core addon cannot be removed',
+    coreAddonDisable: 'Core addon cannot be disabled',
+    pinToTop: 'Pin to top',
+    unpin: 'Unpin',
+    enableAddon: 'Enable addon',
+    disableAddon: 'Temporarily disable addon',
+    copyManifestUrl: 'Copy manifest URL',
+    configureAddon: 'Configure addon',
+    dragToReorder: 'Drag to reorder',
+    addonDisabled: 'Addon disabled (click Save to apply in Stremio)',
+    addonReenabled: 'Addon re-enabled (click Save to apply in Stremio)',
+    noRecommendations: 'No recommendations available',
+    lastChecked: 'Last checked',
+    uptime: 'Uptime',
+    minutesAgo: 'minutes ago',
+    justNow: 'Just now',
+    autoBackupActive: 'Auto-backup active',
+    autoBackupInactive: 'Auto-backup inactive',
+    lastBackup: 'Last backup',
+    noBackups: 'No backups available',
+    profileExists: 'A profile with this name already exists. Overwrite?',
+    profileSaved: 'Profile saved!',
+    profileLoaded: 'Profile loaded!',
+    profileDeleted: 'Profile deleted!',
+    importedX: 'Imported',
+    failedY: 'failed',
+    invalidUrl: 'Invalid URL',
+    showing: 'Showing',
+    of: 'of',
+    addonId: 'ID',
+    version: 'Version',
+  },
+  ro: {
+    addonManager: 'Manager de Addon-uri',
+    subtitle: 'Reordonați, organizați și gestionați addon-urile Stremio',
+    refresh: 'Reîmprospătare',
+    appearance: 'Aspect',
+    linkHealth: 'Sănătate Legături',
+    backup: 'Backup',
+    settings: 'Setări',
+    searchAddons: 'Căutați addon-uri…',
+    all: 'Toate',
+    byType: 'După Tip',
+    totalAddons: 'Total Addon-uri',
+    pinned: 'Fixate',
+    noAddonsLoaded: 'Niciun addon încărcat',
+    loginOrPaste: 'Autentificați-vă sau lipiți cheia Auth mai sus, apoi apăsați Încarcă Addon-uri.',
+    loadAddons: 'Încarcă Addon-uri',
+    saveApply: 'Salvează & Aplică',
+    discard: 'Renunță',
+    unsavedChanges: 'modificări nesalvate',
+    login: 'Autentificare',
+    logout: 'Deconectare',
+    stremioAccount: 'Cont Stremio',
+    authKey: 'Cheie Auth',
+    email: 'Email',
+    password: 'Parolă',
+    searchPlaceholder: 'Căutați addon-uri…',
+    addonsTab: 'Addon-uri',
+    discoverTab: 'Descoperă',
+    discoverTitle: 'Descoperă Addon-uri',
+    searchRecommendations: 'Căutați recomandări…',
+    install: 'Instalează',
+    installed: 'Instalat',
+    import: 'Import',
+    importTitle: 'Importă Addon-uri din URL-uri',
+    importDesc: 'Lipiți URL-urile manifest mai jos, unul pe linie.',
+    importPlaceholder: 'https://example.com/addon1/manifest.json',
+    doImport: 'Import',
+    undo: 'Anulare',
+    redo: 'Refacere',
+    profiles: 'Profiluri',
+    saveProfile: 'Salvează',
+    loadProfile: 'Încarcă',
+    deleteProfile: 'Șterge',
+    collectionProfiles: 'Profiluri de Colecție',
+    profileName: 'Nume profil...',
+    autoBackup: 'Auto-Backup',
+    enableAutoBackup: 'Activează Auto-Backup',
+    autoBackupDesc: 'Salvează un snapshot la fiecare 5 minute.',
+    restoreBackup: 'Restaurează din Backup',
+    stream: 'Stream',
+    catalog: 'Catalog',
+    subtitle: 'Subtitrare',
+    other: 'Altul',
+    loading: 'Se încarcă…',
+    fetchingCloud: 'Se descarcă colecția de addon-uri din Cloud…',
+    loginSuccessful: 'Autentificare reușită!',
+    loggedOut: 'Deconectat',
+    pleaseEnterEmailPass: 'Introduceți email-ul și parola',
+    loggingIn: 'Autentificare...',
+    addonRemoved: 'Addon eliminat',
+    saveFailed: 'Salvarea a eșuat',
+    addonOrderSaved: 'Ordinea addon-urilor salvată!',
+    saved: 'Salvat!',
+    copyFailed: 'Copierea a eșuat',
+    downloadStarted: 'Descărcarea a început',
+    allLinksHealthy: 'Toate legăturile addon-urilor sunt sănătoase',
+    linksBroken: 'legături de addon-uri par defecte',
+    linkLooksBroken: 'legătură de addon pare defectă',
+    changesDiscarded: 'Modificările au fost eliminate',
+    confirmRemove: 'Elimină',
+    removeConfirm: 'Acest lucru va elimina addon-ul din colecția dumneavoastră.',
+    coreAddon: 'Addon-ul de bază nu poate fi eliminat',
+    coreAddonDisable: 'Addon-ul de bază nu poate fi dezactivat',
+    pinToTop: 'Fixează sus',
+    unpin: 'Defixează',
+    enableAddon: 'Activează addon',
+    disableAddon: 'Dezactivează temporar addon',
+    copyManifestUrl: 'Copiază URL manifest',
+    configureAddon: 'Configurează addon',
+    dragToReorder: 'Trage pentru a reordona',
+    addonDisabled: 'Addon dezactivat (apăsați Salvare pentru a aplica în Stremio)',
+    addonReenabled: 'Addon reactivat (apăsați Salvare pentru a aplica în Stremio)',
+    noRecommendations: 'Nu sunt recomandări disponibile',
+    lastChecked: 'Ultima verificare',
+    uptime: 'Timp de funcționare',
+    minutesAgo: 'minute în urmă',
+    justNow: 'Chiar acum',
+    autoBackupActive: 'Auto-backup activ',
+    autoBackupInactive: 'Auto-backup inactiv',
+    lastBackup: 'Ultimul backup',
+    noBackups: 'Nu sunt backup-uri disponibile',
+    profileExists: 'Există deja un profil cu acest nume. Suprascrieți?',
+    profileSaved: 'Profil salvat!',
+    profileLoaded: 'Profil încărcat!',
+    profileDeleted: 'Profil șters!',
+    importedX: 'Importate',
+    failedY: 'eșuate',
+    invalidUrl: 'URL invalid',
+    showing: 'Se afișează',
+    of: 'din',
+    addonId: 'ID',
+    version: 'Versiune',
+  }
+};
+
+let currentLang = localStorage.getItem('addonManagerLang') || 'en';
+
+function t(key) {
+  return (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key]) || (TRANSLATIONS.en[key]) || key;
+}
+
+// Language selector event
+$('langSelector').addEventListener('change', (e) => {
+  currentLang = e.target.value;
+  localStorage.setItem('addonManagerLang', currentLang);
+  applyTranslations();
+});
+
+function applyTranslations() {
+  $('langSelector').value = currentLang;
+  // Header
+  const h1 = document.querySelector('.header-text h1');
+  if (h1) h1.textContent = t('addonManager');
+  const hp = document.querySelector('.header-text p');
+  if (hp) hp.textContent = t('subtitle');
+  // Buttons
+  const btnRefresh = $('btnRefresh');
+  if (btnRefresh) btnRefresh.title = t('refresh');
+  $('btnThemeToggle').innerHTML = '<span class="settings-icon">🌓</span> ' + t('appearance');
+  $('btnCheckLinks').innerHTML = '<span class="settings-icon">🩺</span> ' + t('linkHealth');
+  $('btnBackup').innerHTML = '<span class="settings-icon">📦</span> ' + t('backup');
+  $('btnImportURLs').title = t('import');
+  $('btnAutoBackup').innerHTML = '<span class="settings-icon">⏰</span> ' + t('autoBackup');
+  // Search
+  $('searchInput').placeholder = t('searchAddons');
+  $('discoverSearchInput').placeholder = t('searchRecommendations');
+  // Nav tabs
+  $('tabAddons').textContent = '🔌 ' + t('addonsTab');
+  $('tabDiscover').textContent = '🔍 ' + t('discoverTab');
+  $('discoverTitle').textContent = '🔍 ' + t('discoverTitle');
+  // Auth
+  const authBtns = document.querySelectorAll('#authModeCtrl button');
+  if (authBtns[0]) authBtns[0].textContent = t('stremioAccount');
+  if (authBtns[1]) authBtns[1].textContent = t('authKey');
+  $('emailInput').placeholder = t('email');
+  $('passwordInput').placeholder = t('password');
+  $('btnDoLogin').textContent = t('login');
+  $('btnLogout').textContent = t('logout');
+  // Group control
+  const grpBtns = document.querySelectorAll('#groupCtrl button');
+  if (grpBtns[0]) grpBtns[0].textContent = t('all');
+  if (grpBtns[1]) grpBtns[1].textContent = t('byType');
+  // Type filter
+  const tfBtns = document.querySelectorAll('.type-filter-btn');
+  tfBtns.forEach(b => { if (b.dataset.type) b.textContent = t(b.dataset.type) || b.dataset.type; });
+  // Save bar
+  $('saveBtnText').textContent = t('saveApply');
+  $('btnDiscard').textContent = t('discard');
+  // Profiles
+  $('profilesToggle').textContent = '📋 ' + t('profiles');
+  const pdh = document.querySelector('.profiles-dropdown-header span');
+  if (pdh) pdh.textContent = '📋 ' + t('collectionProfiles');
+  $('newProfileNameInput').placeholder = t('profileName');
+  $('btnSaveProfile').textContent = t('saveProfile');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   UNDO/REDO STACK
+═══════════════════════════════════════════════════════════════════ */
+const undoStack = [];
+const redoStack = [];
+const MAX_UNDO = 50;
+
+function pushUndo(op) {
+  undoStack.push({ op, timestamp: Date.now() });
+  if (undoStack.length > MAX_UNDO) undoStack.shift();
+  redoStack.length = 0;
+  updateUndoRedoUI();
+}
+
+function performUndo() {
+  if (!undoStack.length) return;
+  const entry = undoStack.pop();
+  redoStack.push(entry);
+  undoOperation(entry.op);
+  updateUndoRedoUI();
+  renderList();
+  markChanged();
+}
+
+function performRedo() {
+  if (!redoStack.length) return;
+  const entry = redoStack.pop();
+  undoStack.push(entry);
+  redoOperation(entry.op);
+  updateUndoRedoUI();
+  renderList();
+  markChanged();
+}
+
+function undoOperation(op) {
+  switch (op.type) {
+    case 'reorder':
+      addons = JSON.parse(JSON.stringify(op.prevAddons));
+      disabledAddons = new Set(op.prevDisabled);
+      pinned = new Set(op.prevPinned);
+      persistDisabledState();
+      break;
+    case 'remove': {
+      const idx = Math.min(op.index, addons.length);
+      addons.splice(idx, 0, JSON.parse(JSON.stringify(op.addon)));
+      break;
+    }
+    case 'disable':
+      if (op.wasDisabled) disabledAddons.add(op.url);
+      else disabledAddons.delete(op.url);
+      persistDisabledState();
+      break;
+    case 'pin':
+      if (op.wasPinned) pinned.add(op.url);
+      else pinned.delete(op.url);
+      break;
+    case 'enableDisable':
+      disabledAddons.delete(op.url);
+      if (op.wasDisabled) disabledAddons.add(op.url);
+      persistDisabledState();
+      break;
+  }
+}
+
+function redoOperation(op) {
+  switch (op.type) {
+    case 'reorder':
+      addons = JSON.parse(JSON.stringify(op.nextAddons));
+      disabledAddons = new Set(op.nextDisabled);
+      pinned = new Set(op.nextPinned);
+      persistDisabledState();
+      break;
+    case 'remove':
+      addons = addons.filter(a => (a.transportUrl || a.manifest?.transportUrl) !== op.url);
+      break;
+    case 'disable':
+      if (op.wasDisabled) disabledAddons.delete(op.url);
+      else disabledAddons.add(op.url);
+      persistDisabledState();
+      break;
+    case 'pin':
+      if (op.wasPinned) pinned.delete(op.url);
+      else pinned.add(op.url);
+      break;
+    case 'enableDisable':
+      if (op.wasDisabled) disabledAddons.delete(op.url);
+      else disabledAddons.add(op.url);
+      persistDisabledState();
+      break;
+  }
+}
+
+function updateUndoRedoUI() {
+  $('btnUndo').disabled = undoStack.length === 0;
+  $('btnRedo').disabled = redoStack.length === 0;
+}
+
+$('btnUndo').addEventListener('click', performUndo);
+$('btnRedo').addEventListener('click', performRedo);
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    e.preventDefault();
+    performUndo();
+  }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+    e.preventDefault();
+    performRedo();
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   TYPE FILTER
+═══════════════════════════════════════════════════════════════════ */
+let activeTypeFilter = 'all';
+
+document.querySelectorAll('#typeFilterBar .type-filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#typeFilterBar .type-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeTypeFilter = btn.dataset.type;
+    applyFilter();
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   NAV TABS (Addons / Discover)
+═══════════════════════════════════════════════════════════════════ */
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const target = tab.dataset.tab;
+    $('addonsTabContent').style.display = target === 'addons' ? 'block' : 'none';
+    $('discoverPanel').classList.toggle('active', target === 'discover');
+    if (target === 'discover') loadRecommendations();
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   EXPANDABLE PREVIEW CARDS
+═══════════════════════════════════════════════════════════════════ */
+const manifestCache = new Map();
+const expandedCards = new Set();
+
+function toggleCardPreview(card, url) {
+  if (expandedCards.has(url)) {
+    expandedCards.delete(url);
+    const preview = card.querySelector('.addon-card-preview');
+    if (preview) { preview.classList.remove('open'); }
+    return;
+  }
+  expandedCards.add(url);
+  const existing = card.querySelector('.addon-card-preview');
+  if (existing) existing.remove();
+
+  const preview = document.createElement('div');
+  preview.className = 'addon-card-preview open';
+  const loading = document.createElement('div');
+  loading.className = 'preview-loading';
+  loading.innerHTML = '<span class="spinner"></span> <span>' + t('loading') + '</span>';
+  preview.appendChild(loading);
+  card.appendChild(preview);
+
+  fetchManifestPreview(url).then(data => {
+    loading.remove();
+    const content = document.createElement('div');
+    content.className = 'preview-content';
+    const fields = [
+      [t('addonId') || 'ID', data.id || '-'],
+      [t('version') || 'Version', data.version || '-'],
+      ['Description', data.description || '-'],
+      ['Types', (data.types || []).join(', ') || '-'],
+      ['Catalogs', (data.catalogCount || 0) + ''],
+      ['Resources', (data.resourceCount || 0) + ''],
+      ['URL', data.url || '-'],
+    ];
+    fields.forEach(([label, value]) => {
+      const lbl = document.createElement('div');
+      lbl.className = 'preview-field-label';
+      lbl.textContent = label;
+      content.appendChild(lbl);
+      const val = document.createElement('div');
+      val.className = 'preview-field-value';
+      val.textContent = String(value);
+      content.appendChild(val);
+    });
+    preview.appendChild(content);
+  }).catch(() => {
+    loading.remove();
+    const errMsg = document.createElement('div');
+    errMsg.className = 'preview-loading';
+    errMsg.textContent = 'Could not load manifest info';
+    errMsg.style.color = 'var(--text-dim)';
+    preview.appendChild(errMsg);
+  });
+}
+
+async function fetchManifestPreview(url) {
+  if (manifestCache.has(url)) return manifestCache.get(url);
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(url.replace('stremio://', 'https://'), { method: 'GET', signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (!res.ok) throw new Error('Fetch failed');
+    const manifest = await res.json();
+    const data = {
+      id: manifest.id || '',
+      version: manifest.version || '',
+      description: manifest.description || manifest.shortDescription || '',
+      types: manifest.types || [],
+      catalogCount: (manifest.catalogs || []).length,
+      resourceCount: (manifest.resources || []).length,
+      url: url,
+    };
+    manifestCache.set(url, data);
+    return data;
+  } catch {
+    const data = { id: '', version: '', description: '', types: [], catalogCount: 0, resourceCount: 0, url };
+    manifestCache.set(url, data);
+    return data;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PROFILES
+═══════════════════════════════════════════════════════════════════ */
+let profiles = JSON.parse(localStorage.getItem('addonProfiles') || '{}');
+
+function renderProfilesList() {
+  const list = $('profilesList');
+  list.innerHTML = '';
+  const names = Object.keys(profiles);
+  if (names.length === 0) {
+    list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-dim);font-size:.82rem;">No profiles yet</div>';
+    return;
+  }
+  names.forEach(name => {
+    const item = document.createElement('div');
+    item.className = 'profile-item';
+    item.dataset.name = name;
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'profile-item-name';
+    nameSpan.textContent = name;
+    item.appendChild(nameSpan);
+    const actions = document.createElement('span');
+    actions.className = 'profile-item-actions';
+    const loadBtn = document.createElement('button');
+    loadBtn.textContent = '↩';
+    loadBtn.title = t('loadProfile');
+    loadBtn.addEventListener('click', (e) => { e.stopPropagation(); loadProfile(name); });
+    actions.appendChild(loadBtn);
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '✕';
+    delBtn.title = t('deleteProfile');
+    delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteProfile(name); });
+    actions.appendChild(delBtn);
+    item.appendChild(actions);
+    item.addEventListener('click', () => loadProfile(name));
+    list.appendChild(item);
+  });
+}
+
+function saveProfile() {
+  const name = $('newProfileNameInput').value.trim();
+  if (!name) { toast('Enter a profile name', 'warning'); return; }
+  if (profiles[name] && !confirm(t('profileExists'))) return;
+  profiles[name] = {
+    addons: JSON.parse(JSON.stringify(addons)),
+    disabledAddons: [...disabledAddons],
+    disabledAddonStore: JSON.parse(JSON.stringify(disabledAddonStore)),
+    disabledAddonPositions: JSON.parse(JSON.stringify(disabledAddonPositions)),
+    pinned: [...pinned],
+    timestamp: Date.now(),
+  };
+  localStorage.setItem('addonProfiles', JSON.stringify(profiles));
+  renderProfilesList();
+  $('newProfileNameInput').value = '';
+  toast(t('profileSaved'), 'success');
+}
+
+function loadProfile(name) {
+  const profile = profiles[name];
+  if (!profile) return;
+  addons = JSON.parse(JSON.stringify(profile.addons));
+  disabledAddons = new Set(profile.disabledAddons || []);
+  disabledAddonStore = JSON.parse(JSON.stringify(profile.disabledAddonStore || {}));
+  disabledAddonPositions = JSON.parse(JSON.stringify(profile.disabledAddonPositions || {}));
+  pinned = new Set(profile.pinned || []);
+  persistDisabledState();
+  original = JSON.parse(JSON.stringify(addons));
+  originalDisabledAddons = new Set(disabledAddons);
+  renderList();
+  hideSaveBar();
+  closeProfilesDropdown();
+  toast(t('profileLoaded'), 'success');
+}
+
+function deleteProfile(name) {
+  delete profiles[name];
+  localStorage.setItem('addonProfiles', JSON.stringify(profiles));
+  renderProfilesList();
+  toast(t('profileDeleted'), 'warning');
+}
+
+$('btnSaveProfile').addEventListener('click', saveProfile);
+$('newProfileNameInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveProfile(); });
+
+function toggleProfilesDropdown() {
+  const dd = $('profilesDropdown');
+  const isOpen = dd.classList.contains('open');
+  dd.classList.toggle('open', !isOpen);
+  $('profilesToggle').classList.toggle('open', !isOpen);
+  if (!isOpen) renderProfilesList();
+}
+function closeProfilesDropdown() {
+  $('profilesDropdown').classList.remove('open');
+  $('profilesToggle').classList.remove('open');
+}
+$('profilesToggle').addEventListener('click', (e) => { e.stopPropagation(); toggleProfilesDropdown(); });
+$('btnNewProfileInline').addEventListener('click', (e) => { e.stopPropagation(); $('newProfileNameInput').focus(); });
+document.addEventListener('click', (e) => { if (!e.target.closest('.profiles-wrapper')) closeProfilesDropdown(); });
+
+/* ═══════════════════════════════════════════════════════════════════
+   COMMUNITY RECOMMENDATIONS (DISCOVER)
+═══════════════════════════════════════════════════════════════════ */
+let recommendations = [];
+let discoverSearchTimeout;
+
+$('discoverSearchInput').addEventListener('input', () => {
+  clearTimeout(discoverSearchTimeout);
+  discoverSearchTimeout = setTimeout(() => renderDiscoverGrid(), 300);
+});
+
+async function loadRecommendations() {
+  const grid = $('discoverGrid');
+  grid.innerHTML = '<div class="status-panel"><div class="spinner" style="width:36px;height:36px;border-width:3px;margin:0 auto 16px"></div><p>' + t('loading') + '</p></div>';
+  try {
+    const res = await fetch(API_BASE + '/api/recommendations', {
+      method: 'GET',
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error('Failed to fetch');
+    const data = await res.json();
+    recommendations = data.recommendations || data.addons || data || [];
+    if (!Array.isArray(recommendations)) recommendations = [];
+    renderDiscoverGrid();
+  } catch {
+    grid.innerHTML = '<div class="status-panel"><div class="icon">⚠️</div><h3>Could not load recommendations</h3><p>The recommendations server may be unavailable.</p></div>';
+  }
+}
+
+function renderDiscoverGrid() {
+  const grid = $('discoverGrid');
+  const q = ($('discoverSearchInput').value || '').toLowerCase().trim();
+  const filtered = q ? recommendations.filter(r => {
+    const name = (r.name || '').toLowerCase();
+    const desc = (r.description || '').toLowerCase();
+    return name.includes(q) || desc.includes(q);
+  }) : recommendations;
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '<div class="status-panel"><div class="icon">🔍</div><h3>' + t('noRecommendations') + '</h3></div>';
+    return;
+  }
+
+  grid.innerHTML = '';
+  filtered.forEach(rec => {
+    const card = document.createElement('div');
+    card.className = 'discover-card';
+    const man = rec.manifest || rec;
+    const name = man.name || rec.name || 'Unknown';
+    const desc = man.description || man.shortDescription || rec.description || '';
+    const logo = man.logo || man.icon || rec.logo || '';
+    const url = rec.transportUrl || man.transportUrl || rec.url || '';
+    const types = man.types || rec.types || [];
+    const isInstalled = addons.some(a => (a.transportUrl || a.manifest?.transportUrl) === url);
+
+    const header = document.createElement('div');
+    header.className = 'discover-card-header';
+    const iconDiv = document.createElement('div');
+    iconDiv.className = 'discover-card-icon';
+    if (logo) {
+      const img = document.createElement('img');
+      img.src = logo; img.alt = ''; img.loading = 'lazy';
+      img.addEventListener('error', () => { iconDiv.textContent = '🔌'; });
+      iconDiv.appendChild(img);
+    } else {
+      iconDiv.textContent = '🔌';
+    }
+    header.appendChild(iconDiv);
+    const nameDiv = document.createElement('div');
+    nameDiv.className = 'discover-card-name';
+    nameDiv.textContent = name;
+    header.appendChild(nameDiv);
+    card.appendChild(header);
+
+    const descDiv = document.createElement('div');
+    descDiv.className = 'discover-card-desc';
+    descDiv.textContent = desc;
+    card.appendChild(descDiv);
+
+    const footer = document.createElement('div');
+    footer.className = 'discover-card-footer';
+    const tagsSpan = document.createElement('span');
+    tagsSpan.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;';
+    types.slice(0, 3).forEach(tp => {
+      const tag = document.createElement('span');
+      tag.className = 'tag ' + tagClass(tp);
+      tag.textContent = tp;
+      tagsSpan.appendChild(tag);
+    });
+    footer.appendChild(tagsSpan);
+    const installBtn = document.createElement('button');
+    installBtn.className = 'btn ' + (isInstalled ? 'btn-ghost' : 'btn-primary');
+    installBtn.style.cssText = 'padding:5px 14px;font-size:.8rem;';
+    installBtn.textContent = isInstalled ? t('installed') : t('install');
+    installBtn.disabled = isInstalled;
+    if (!isInstalled && url) {
+      installBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        installRecommendedAddon(rec, url);
+        installBtn.textContent = t('installed');
+        installBtn.disabled = true;
+        installBtn.className = 'btn btn-ghost';
+        installBtn.style.cssText = 'padding:5px 14px;font-size:.8rem;';
+      });
+    }
+    footer.appendChild(installBtn);
+    card.appendChild(footer);
+    grid.appendChild(card);
+  });
+}
+
+function installRecommendedAddon(rec, url) {
+  const addon = rec.transportUrl ? rec : { transportUrl: url, manifest: rec.manifest || rec };
+  addons.push(addon);
+  renderList();
+  markChanged();
+  toast(name + ' ' + t('installed').toLowerCase(), 'success');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   BATCH IMPORT FROM URLS
+═══════════════════════════════════════════════════════════════════ */
+$('btnImportURLs').addEventListener('click', () => { openModal('importModal'); });
+$('btnDoImport').addEventListener('click', async () => {
+  const text = $('importUrlsTextarea').value.trim();
+  if (!text) { toast('Paste some URLs first', 'warning'); return; }
+  const urls = text.split(/[\n\r]+/).map(u => u.trim()).filter(u => u.length > 0);
+  if (urls.length === 0) { toast('No valid URLs found', 'warning'); return; }
+
+  const progress = $('importProgress');
+  const fill = $('importProgressFill');
+  const results = $('importResults');
+  progress.classList.add('active');
+  fill.style.width = '0%';
+  results.textContent = '';
+
+  let imported = 0, failed = 0;
+  const newAddons = [];
+
+  for (let i = 0; i < urls.length; i++) {
+    const url = urls[i];
+    fill.style.width = Math.round(((i + 1) / urls.length) * 100) + '%';
+    results.textContent = `Processing ${i + 1}/${urls.length}...`;
+    try {
+      if (!/^https?:\/\//i.test(url)) throw new Error(t('invalidUrl'));
+      const res = await fetch(url, { method: 'GET' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const manifest = await res.json();
+      newAddons.push({ transportUrl: url, manifest });
+      imported++;
+    } catch {
+      failed++;
+    }
+  }
+
+  if (imported > 0) {
+    addons.push(...newAddons);
+    renderList();
+    markChanged();
+  }
+
+  results.innerHTML = '<span class="success-text">' + t('importedX') + ': ' + imported + '</span>' +
+    (failed > 0 ? ' | <span class="error-text">' + t('failedY') + ': ' + failed + '</span>' : '');
+  fill.style.width = '100%';
+  toast(imported + ' ' + t('importedX').toLowerCase() + (failed > 0 ? ', ' + failed + ' ' + t('failedY') : ''), imported > 0 ? 'success' : 'error');
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   HEALTH DASHBOARD WITH HISTORY
+═══════════════════════════════════════════════════════════════════ */
+const healthHistory = JSON.parse(localStorage.getItem('addonHealthHistory') || '{}');
+let lastHealthCheckTime = parseInt(localStorage.getItem('lastHealthCheckTime') || '0');
+
+const originalRunBrokenLinkCheck = runBrokenLinkCheck;
+runBrokenLinkCheck = async function() {
+  try {
+    const res = await apiFetch('/api/addons/check-links', {});
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Link check failed');
+    addonHealth.clear();
+    data.checks.forEach(c => {
+      addonHealth.set(c.url, !!c.ok);
+      // Save to history
+      if (!healthHistory[c.url]) healthHistory[c.url] = [];
+      healthHistory[c.url].push({ ok: !!c.ok, time: Date.now() });
+      if (healthHistory[c.url].length > 10) healthHistory[c.url].shift();
+    });
+    lastHealthCheckTime = Date.now();
+    localStorage.setItem('addonHealthHistory', JSON.stringify(healthHistory));
+    localStorage.setItem('lastHealthCheckTime', String(lastHealthCheckTime));
+    renderList();
+    const broken = data.checks.filter(c => !c.ok && !c.skipped).length;
+    toast(broken ? (broken + ' ' + t('linksBroken')) : t('allLinksHealthy'), broken ? 'warning' : 'success');
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+};
+
+function getHealthTrend(url) {
+  const history = healthHistory[url];
+  if (!history || history.length < 2) return 'flat';
+  const recent = history.slice(-3);
+  const last = recent[recent.length - 1].ok;
+  const prev = recent[0].ok;
+  if (last && !prev) return 'up';
+  if (!last && prev) return 'down';
+  return 'flat';
+}
+
+function getHealthUptime(url) {
+  const history = healthHistory[url];
+  if (!history || history.length === 0) return null;
+  const ok = history.filter(h => h.ok).length;
+  return Math.round((ok / history.length) * 100);
+}
+
+function getLastCheckedAgo() {
+  if (!lastHealthCheckTime) return null;
+  const mins = Math.floor((Date.now() - lastHealthCheckTime) / 60000);
+  if (mins < 1) return t('justNow');
+  return mins + ' ' + t('minutesAgo');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   AUTO-BACKUP SCHEDULER
+═══════════════════════════════════════════════════════════════════ */
+let autoBackupEnabled = localStorage.getItem('autoBackupEnabled') === 'true';
+let autoBackupInterval = null;
+const AUTO_BACKUP_KEY = 'autoBackupSnapshots';
+let autoBackupSnapshots = JSON.parse(localStorage.getItem(AUTO_BACKUP_KEY) || '[]');
+
+function startAutoBackup() {
+  stopAutoBackup();
+  autoBackupInterval = setInterval(() => {
+    createAutoBackupSnapshot();
+  }, 5 * 60 * 1000); // 5 minutes
+}
+
+function stopAutoBackup() {
+  if (autoBackupInterval) { clearInterval(autoBackupInterval); autoBackupInterval = null; }
+}
+
+function createAutoBackupSnapshot() {
+  if (addons.length === 0) return;
+  const snapshot = {
+    addons: JSON.parse(JSON.stringify(addons)),
+    disabledAddons: [...disabledAddons],
+    timestamp: Date.now(),
+    count: addons.length,
+  };
+  autoBackupSnapshots.push(snapshot);
+  if (autoBackupSnapshots.length > 20) autoBackupSnapshots = autoBackupSnapshots.slice(-20);
+  localStorage.setItem(AUTO_BACKUP_KEY, JSON.stringify(autoBackupSnapshots));
+  updateAutoBackupStatus();
+}
+
+function updateAutoBackupStatus() {
+  const bar = $('autobackupStatusBar');
+  const text = $('autobackupStatusText');
+  if (autoBackupEnabled) {
+    bar.style.display = 'flex';
+    text.classList.remove('inactive');
+    const lastSnap = autoBackupSnapshots[autoBackupSnapshots.length - 1];
+    if (lastSnap) {
+      const ago = Math.floor((Date.now() - lastSnap.timestamp) / 60000);
+      text.innerHTML = '<span class="dot"></span><span>' + t('autoBackupActive') + ' — ' + t('lastBackup') + ': ' + (ago < 1 ? t('justNow') : ago + ' ' + t('minutesAgo')) + '</span>';
+    } else {
+      text.innerHTML = '<span class="dot"></span><span>' + t('autoBackupActive') + '</span>';
+    }
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+$('toggleAutoBackup').addEventListener('change', (e) => {
+  autoBackupEnabled = e.target.checked;
+  localStorage.setItem('autoBackupEnabled', String(autoBackupEnabled));
+  if (autoBackupEnabled) { startAutoBackup(); createAutoBackupSnapshot(); }
+  else stopAutoBackup();
+  updateAutoBackupStatus();
+});
+
+$('btnAutoBackup').addEventListener('click', () => {
+  $('toggleAutoBackup').checked = autoBackupEnabled;
+  // Show last backup info
+  const info = $('autobackupLastInfo');
+  const lastSnap = autoBackupSnapshots[autoBackupSnapshots.length - 1];
+  if (lastSnap) {
+    const ago = Math.floor((Date.now() - lastSnap.timestamp) / 60000);
+    info.textContent = t('lastBackup') + ': ' + (ago < 1 ? t('justNow') : ago + ' ' + t('minutesAgo'));
+  } else {
+    info.textContent = t('noBackups');
+  }
+  // Render backup list
+  const list = $('autoBackupList');
+  list.innerHTML = '';
+  const sorted = [...autoBackupSnapshots].reverse();
+  if (sorted.length === 0) {
+    list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-dim);font-size:.82rem;">' + t('noBackups') + '</div>';
+  } else {
+    sorted.forEach((snap, i) => {
+      const item = document.createElement('div');
+      item.className = 'backup-list-item';
+      const infoDiv = document.createElement('div');
+      infoDiv.className = 'backup-list-item-info';
+      const timeDiv = document.createElement('div');
+      timeDiv.className = 'backup-list-item-time';
+      timeDiv.textContent = new Date(snap.timestamp).toLocaleString();
+      infoDiv.appendChild(timeDiv);
+      const countDiv = document.createElement('div');
+      countDiv.className = 'backup-list-item-count';
+      countDiv.textContent = snap.count + ' addons';
+      infoDiv.appendChild(countDiv);
+      item.appendChild(infoDiv);
+      item.addEventListener('click', () => {
+        addons = JSON.parse(JSON.stringify(snap.addons));
+        disabledAddons = new Set(snap.disabledAddons || []);
+        renderList();
+        markChanged();
+        closeModal('autoBackupModal');
+        toast('Backup restored!', 'success');
+      });
+      list.appendChild(item);
+    });
+  }
+  openModal('autoBackupModal');
+  closeSettingsDropdown();
+});
+
+// Initialize auto-backup
+if (autoBackupEnabled) startAutoBackup();
+updateAutoBackupStatus();
+
+/* ═══════════════════════════════════════════════════════════════════
+   ENHANCED applyFilter WITH TYPE FILTER & COUNT
+═══════════════════════════════════════════════════════════════════ */
+const originalApplyFilter = applyFilter;
+applyFilter = function() {
+  const q = $('searchInput').value.toLowerCase().trim();
+  const cards = addonList.querySelectorAll('.addon-card');
+  let visibleCount = 0;
+  cards.forEach(card => {
+    const nameMatch = card.dataset.name.includes(q);
+    const url = card.dataset.url || '';
+    const urlMatch = url.toLowerCase().includes(q);
+    let typeMatch = true;
+    if (activeTypeFilter !== 'all') {
+      const cardTypes = (card.dataset.types || '').split(',');
+      typeMatch = cardTypes.includes(activeTypeFilter);
+    }
+    const hide = !nameMatch && !urlMatch || !typeMatch;
+    card.classList.toggle('hidden', hide);
+    if (!hide) visibleCount++;
+  });
+  $('filterCount').textContent = t('showing') + ' ' + visibleCount + ' ' + t('of') + ' ' + (addons.length || 0);
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   ENHANCED buildCard — ADD PREVIEW + TYPE DATA + HEALTH TREND
+═══════════════════════════════════════════════════════════════════ */
+const originalBuildCard = buildCard;
+buildCard = function(addon, idx) {
+  const url = addon.transportUrl || addon.manifest?.transportUrl || '';
+  const man = addon.manifest || addon;
+  const types = [...(man.types || []), ...(man.resources || []).map(r => typeof r === 'string' ? r : r.name || '')];
+  const typeStr = [...new Set(types)].join(',');
+
+  const card = originalBuildCard(addon, idx);
+  card.dataset.types = typeStr;
+
+  // Add type to dataset for search
+  card.dataset.url = url;
+
+  // Make card expandable on click (not on buttons)
+  card.addEventListener('click', (e) => {
+    if (e.target.closest('.card-actions') || e.target.closest('.drag-handle')) return;
+    toggleCardPreview(card, url);
+  });
+
+  // Add health trend indicator to name
+  if (addonHealth.get(url) !== undefined) {
+    const trend = getHealthTrend(url);
+    const uptime = getHealthUptime(url);
+    const nameDiv = card.querySelector('.addon-name');
+    if (nameDiv && (trend !== 'flat' || uptime !== null)) {
+      const trendSpan = document.createElement('span');
+      trendSpan.className = 'health-trend ' + trend;
+      const arrow = trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→';
+      trendSpan.innerHTML = arrow;
+      if (uptime !== null) {
+        trendSpan.textContent += ' ' + uptime + '%';
+      }
+      nameDiv.appendChild(trendSpan);
+    }
+  }
+
+  return card;
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   UNDO/REDO INTEGRATION INTO EXISTING FUNCTIONS
+═══════════════════════════════════════════════════════════════════ */
+const originalSyncOrderFromDOM = syncOrderFromDOM;
+syncOrderFromDOM = function() {
+  const prevAddons = JSON.parse(JSON.stringify(addons));
+  const prevDisabled = new Set(disabledAddons);
+  const prevPinned = new Set(pinned);
+  originalSyncOrderFromDOM();
+  pushUndo({
+    type: 'reorder',
+    prevAddons, prevDisabled, prevPinned,
+    nextAddons: JSON.parse(JSON.stringify(addons)),
+    nextDisabled: new Set(disabledAddons),
+    nextPinned: new Set(pinned),
+  });
+};
+
+const originalTogglePin = togglePin;
+togglePin = function(url) {
+  const wasPinned = pinned.has(url);
+  const prevAddons = JSON.parse(JSON.stringify(addons));
+  originalTogglePin(url);
+  pushUndo({ type: 'pin', url, wasPinned });
+};
+
+const originalToggleAddonDisabled = toggleAddonDisabled;
+toggleAddonDisabled = function(url) {
+  const wasDisabled = disabledAddons.has(url);
+  originalToggleAddonDisabled(url);
+  pushUndo({ type: 'enableDisable', url, wasDisabled });
+};
+
+const originalRemoveAddon = removeAddon;
+removeAddon = function(url) {
+  const idx = addons.findIndex(a => (a.transportUrl || a.manifest?.transportUrl) === url);
+  const addon = addons[idx];
+  originalRemoveAddon(url);
+  pushUndo({ type: 'remove', url, addon: JSON.parse(JSON.stringify(addon)), index: idx });
+};
+
+// Also update stats bar to show health info
+const originalUpdateStats = updateStats;
+updateStats = function() {
+  originalUpdateStats();
+  const bar = $('statsBar');
+  // Add last checked info
+  const lastChecked = getLastCheckedAgo();
+  if (lastChecked && addonHealth.size > 0) {
+    let existing = bar.querySelector('.health-last-checked');
+    if (!existing) {
+      existing = document.createElement('div');
+      existing.className = 'stat';
+      bar.appendChild(existing);
+    }
+    existing.className = 'stat';
+    existing.innerHTML = '<span style="color:var(--text-dim);font-size:.72rem;">' + t('lastChecked') + ':</span> <span class="stat-val" style="font-size:.72rem;">' + lastChecked + '</span>';
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   INIT TRANSLATIONS ON LOAD
+═══════════════════════════════════════════════════════════════════ */
+applyTranslations();
+updateUndoRedoUI();
+
+
+(function loadSortable() {
+  if (typeof Sortable === 'undefined' || !Sortable.create) {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js';
+    // TODO: Compute SRI hash for SortableJS 1.15.2 from cdn.jsdelivr.net
+    // s.integrity = 'sha384-COULD_NOT_COMPUTE_RUNTIME';
+    s.crossOrigin = 'anonymous';
+    s.onload = () => { loadAddons(); };
+    s.onerror = () => { window.Sortable = { create: () => ({ destroy: () => {} }) }; toast('Drag-and-drop failed to load. Please refresh the page.', 'error'); loadAddons(); };
+    document.head.appendChild(s);
+  } else {
+    loadAddons();
+  }
+})();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CINEMETA GRANULAR CONTROL LOGIC
+═══════════════════════════════════════════════════════════════════ */
+let targetCinemetaUrl = null;
+
+// Handle the red warning box visibility
+$('toggleCinemetaMeta').addEventListener('change', (e) => {
+  $('cinemetaWarningBox').classList.toggle('show', e.target.checked);
+});
+
+function detectCinemetaPatches(manifest) {
+  const catalogs = manifest.catalogs || [];
+  const resources = manifest.resources || [];
+
+  // Search is removed when NO catalog has a 'search' extra and NO 'search' resource exists
+  const hasSearchCatalog = catalogs.some(c =>
+    (c.extra && c.extra.some(e => e.name === 'search')) ||
+    (c.extraSupported && c.extraSupported.includes('search'))
+  );
+  const hasSearchResource = resources.some(r =>
+    (typeof r === 'string' ? r : r.name) === 'search'
+  );
+  const removeSearch = !hasSearchCatalog && !hasSearchResource;
+
+  // Catalogs patch: popular/new/featured catalogs are gone
+  const catalogTargets = ['popular', 'new', 'featured'];
+  const hasTargetCatalog = catalogs.some(c => {
+    const id = (c.id || '').toLowerCase();
+    const name = (c.name || '').toLowerCase();
+    return catalogTargets.some(t => id.includes(t) || name === t);
+  });
+  const removeCatalogs = !hasTargetCatalog;
+
+  // Metadata patch: 'meta' resource is gone
+  const hasMetaResource = resources.some(r =>
+    (typeof r === 'string' ? r : r.name) === 'meta'
+  );
+  const removeMetadata = !hasMetaResource;
+
+  return { removeSearch, removeCatalogs, removeMetadata };
+}
+
+function openCinemetaSettings(url) {
+  targetCinemetaUrl = url;
+
+  // Find the current addon manifest and detect which patches are already applied
+  const addon = addons.find(a => (a.transportUrl || a.manifest?.transportUrl) === url);
+  const manifest = addon?.manifest || {};
+
+  // Only run detection when there's something to inspect (manifest has resources or catalogs)
+  const hasManifestData = (manifest.resources && manifest.resources.length > 0) ||
+                          (manifest.catalogs && manifest.catalogs.length >= 0);
+
+  if (hasManifestData) {
+    const current = detectCinemetaPatches(manifest);
+    $('toggleCinemetaSearch').checked = current.removeSearch;
+    $('toggleCinemetaCatalogs').checked = current.removeCatalogs;
+    $('toggleCinemetaMeta').checked = current.removeMetadata;
+    $('cinemetaWarningBox').classList.toggle('show', current.removeMetadata);
+  } else {
+    // Fallback: default everything off if manifest is empty/unavailable
+    $('toggleCinemetaSearch').checked = false;
+    $('toggleCinemetaCatalogs').checked = false;
+    $('toggleCinemetaMeta').checked = false;
+    $('cinemetaWarningBox').classList.remove('show');
+  }
+
+  openModal('cinemetaModal');
+}
+
+function applyCinemetaPatches(addon, options) {
+  // Deep clone to prevent mutating the React/UI state directly by reference
+  const cloned = structuredClone(addon);
+  const manifest = cloned.manifest;
+
+  if (options.removeSearch) {
+    if (manifest.catalogs) {
+      manifest.catalogs = manifest.catalogs.filter(c => {
+        const hasSearchExtra = c.extra && c.extra.some(e => e.name === 'search');
+        const hasSearchSupported = c.extraSupported && c.extraSupported.includes('search');
+        return !(hasSearchExtra || hasSearchSupported);
+      });
+    }
+    if (manifest.resources) {
+      manifest.resources = manifest.resources.filter(r => (typeof r === 'string' ? r : r.name) !== 'search');
+    }
+  }
+
+  if (options.removeCatalogs) {
+    const targets = ['popular', 'new', 'featured'];
+    if (manifest.catalogs) {
+      manifest.catalogs = manifest.catalogs.filter(c => {
+        const id = (c.id || '').toLowerCase();
+        const name = (c.name || '').toLowerCase();
+        return !targets.some(t => id.includes(t) || name === t);
+      });
+    }
+  }
+
+  if (options.removeMetadata) {
+    if (manifest.resources) {
+      manifest.resources = manifest.resources.filter(r => (typeof r === 'string' ? r : r.name) !== 'meta');
+    }
+  }
+
+  return cloned;
+}
+
+$('btnApplyCinemeta').addEventListener('click', () => {
+  if (!targetCinemetaUrl) return;
+
+  const options = {
+    removeSearch: $('toggleCinemetaSearch').checked,
+    removeCatalogs: $('toggleCinemetaCatalogs').checked,
+    removeMetadata: $('toggleCinemetaMeta').checked
+  };
+
+  // Find the addon in the global array and replace it with the mutated clone
+  const addonIndex = addons.findIndex(a => (a.transportUrl || a.manifest?.transportUrl) === targetCinemetaUrl);
+  
+  if (addonIndex !== -1) {
+    addons[addonIndex] = applyCinemetaPatches(addons[addonIndex], options);
+    renderList();
+    markChanged();
+    toast('Cinemeta manifest patched successfully', 'success');
+  }
+
+  closeModal('cinemetaModal');
+  targetCinemetaUrl = null;
+});
+
+// NEW: Reset Button Logic (Fetches fresh copy directly from Stremio)
+$('btnResetCinemeta').addEventListener('click', async () => {
+  if (!targetCinemetaUrl) return;
+
+  const btn = $('btnResetCinemeta');
+  const originalText = btn.textContent;
+  btn.textContent = 'Resetting...';
+  btn.disabled = true;
+
+  try {
+    // 1. Ensure the URL is fetchable (fix stremio:// protocol)
+    let fetchUrl = targetCinemetaUrl;
+    if (fetchUrl.startsWith('stremio://')) {
+      fetchUrl = fetchUrl.replace('stremio://', 'https://');
+    }
+    
+    // Fallback to the official endpoint if the URL is completely missing/broken
+    if (!fetchUrl.startsWith('http')) {
+      fetchUrl = 'https://v3-cinemeta.strem.io/manifest.json';
+    }
+
+    // 2. Fetch the pristine manifest from Stremio
+    const res = await fetch(fetchUrl);
+    if (!res.ok) throw new Error('Failed to fetch from Stremio (' + res.status + ')');
+    const cleanManifest = await res.json();
+
+    const currentIndex = addons.findIndex(a => (a.transportUrl || a.manifest?.transportUrl) === targetCinemetaUrl);
+
+    if (currentIndex !== -1) {
+      // 3. Overwrite the corrupted/patched manifest with the pristine one
+      addons[currentIndex] = { ...addons[currentIndex], manifest: cleanManifest };
+      
+      renderList();
+      markChanged();
+      
+      // 4. Force the UI to show the Save Bar just in case deep-compare misses it
+      showSaveBar();
+      $('changesCount').textContent = "1+";
+
+      toast('Cinemeta restored! Click Save & Apply.', 'success');
+    } else {
+      toast('Could not find Cinemeta in your list.', 'error');
+    }
+  } catch (err) {
+    console.error('Reset error:', err);
+    toast('Error resetting: ' + err.message, 'error');
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+    closeModal('cinemetaModal');
+    targetCinemetaUrl = null;
+  }
+});
+</script>
+</body>
+</html>

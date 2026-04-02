@@ -1,0 +1,46 @@
+{
+  "name": "stremio-addon-manager",
+  "version": "1.0.0",
+  "description": "A Stremio addon for reordering and managing installed addons via a drag-and-drop configure page.",
+  "main": "index.js",
+  "scripts": {
+    "vercel-build": "echo 'No build step required'",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:verbose": "jest --verbose",
+    "lint": "echo 'No linter configured yet'",
+    "postinstall": "echo 'Run npm test to verify setup'"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "jest": "^30.0.0",
+    "eslint": "^8.56.0",
+    "eslint-config-recommended": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT",
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/__tests__/**/*.test.js",
+      "test/**/*.test.js"
+    ],
+    "collectCoverageFrom": [
+      "lib/**/*.js",
+      "api/**/*.js",
+      "!lib/__tests__/**",
+      "!api/__tests__/**"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 50,
+        "functions": 50,
+        "lines": 50,
+        "statements": 50
+      }
+    }
+  }
+}
