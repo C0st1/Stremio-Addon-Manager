@@ -329,6 +329,7 @@ body {
 
 .addon-card {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
@@ -949,6 +950,7 @@ input.danger-toggle:checked + .slider { background-color: var(--danger); border-
 ═══════════════════════════════════════════════════════ */
 .addon-card { cursor: pointer; }
 .addon-card-preview {
+  flex: 0 0 100%;
   max-height: 0;
   overflow: hidden;
   transition: max-height .35s ease, padding .35s ease, opacity .25s ease;
@@ -2928,7 +2930,16 @@ function toggleCardPreview(card, url, addon) {
   if (expandedCards.has(url)) {
     expandedCards.delete(url);
     const preview = card.querySelector('.addon-card-preview');
-    if (preview) { preview.classList.remove('open'); }
+    if (preview) {
+      preview.classList.remove('open');
+      // Remove element from DOM after transition completes to avoid leftover layout
+      preview.addEventListener('transitionend', function handler(e) {
+        if (e.propertyName === 'max-height') {
+          preview.removeEventListener('transitionend', handler);
+          preview.remove();
+        }
+      });
+    }
     return;
   }
   expandedCards.add(url);
