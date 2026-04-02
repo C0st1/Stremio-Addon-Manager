@@ -1,16 +1,12 @@
 /**
  * api/manifest.js
  * Vercel serverless function — serves the Stremio addon manifest.
- * The PUBLIC_URL is derived from the incoming request so it works
- * on any Vercel deployment URL (preview or production).
  */
 
+const { setSecurityHeaders } = require('../lib/securityHeaders');
+
 module.exports = (req, res) => {
-  // Build the base URL from the incoming request so the manifest
-  // always points back to this exact deployment.
-  const proto   = req.headers['x-forwarded-proto'] || 'https';
-  const host    = req.headers['x-forwarded-host']  || req.headers.host;
-  const baseUrl = `${proto}://${host}`;
+  setSecurityHeaders(res);
 
   const manifest = {
     id:          'community.addon-manager',

@@ -1119,10 +1119,10 @@ $('authKeyInput').addEventListener('input', (e) => {
   clearTimeout(authKeyTimeout);
   
   // If the input looks like a valid auth key (usually 40+ characters), auto-load
-  if (val.length > 20) {
+  if (val.length > 40) {
     authKeyTimeout = setTimeout(() => {
       bindSessionFromKey(val).then(() => { loggedIn = true; updateLoginUI(); return loadAddons(); }).catch(err => toast(err.message, 'error'));
-    }, 600); // Wait 600ms after they finish pasting/typing to prevent spamming
+    }, 800); // Wait 600ms after they finish pasting/typing to prevent spamming
   } else if (val.length === 0) {
     // Optional: Clear the list if they delete the key
     addons = [];
@@ -1466,50 +1466,196 @@ function buildCard(addon, idx) {
   // Check if the addon has a configuration page
   const isConfigurable = man.behaviorHints?.configurable === true;
 
-  const health = addonHealth.get(url);
-  const healthHtml = health == null ? '' : health ? '<span class="link-status-ok" title="Transport URL reachable">●</span>' : '<span class="link-status-bad" title="Transport URL appears unavailable">●</span>';
+    const health = addonHealth.get(url);
   const card = document.createElement('div');
   card.className = 'addon-card' + (isPinned ? ' pinned-addon' : '') + (isDisabled ? ' disabled-addon' : '');
   card.dataset.url  = url; card.dataset.idx  = idx; card.dataset.name = name.toLowerCase();
   card.draggable    = false; 
 
-  const iconHtml = logo ? `<img src="${escHtml(logo)}" alt="" onerror="this.parentNode.innerHTML='🔌'" loading="lazy"/>` : `<span class="addon-icon-placeholder">🔌</span>`;
-  const allRes   = [...new Set([...types, ...res.map(r => typeof r === 'string' ? r : r.name || '')])];
-  const tagHtml  = allRes.slice(0, 4).map(t => `<span class="tag ${tagClass(t)}">${escHtml(t)}</span>`).join('');
-  const iconPowerOn = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>`;
-  const iconPowerOff = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 0 1 2.5 8.04"/><path d="M20.66 20.66A9 9 0 0 1 5.64 5.64"/><line x1="12" y1="2" x2="12" y2="12"/><line x1="2" y1="2" x2="22" y2="22"/></svg>`;
+  // ── Helper: create SVG element from controlled markup (no user data) ──
+  function svgFromStr(str) {
+    const tmp = document.createElement('span');
+    tmp.innerHTML = str;
+    return tmp.firstElementChild;
+  }
 
-  card.innerHTML = `
-    <span class="order-badge">${idx + 1}</span>
-    <div class="drag-handle" title="Drag to reorder">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-        <circle cx="9" cy="5"  r="2"/><circle cx="15" cy="5"  r="2"/>
-        <circle cx="9" cy="12" r="2"/><circle cx="15" cy="12" r="2"/>
-        <circle cx="9" cy="19" r="2"/><circle cx="15" cy="19" r="2"/>
-      </svg>
-    </div>
-    <div class="addon-icon">${iconHtml}</div>
-    <div class="addon-info">
-      <div class="addon-name">${escHtml(name)} <span class="addon-version">v${escHtml(version)}</span> ${isPinned ? '<span title="Pinned" style="color:var(--pin-color);font-size:.7rem">📌</span>' : ''} ${isProtected ? '<span class="protected-lock" title="Core addon cannot be removed">🔒</span>' : ''} ${healthHtml}</div>
-      <div class="addon-desc">${escHtml(desc)}</div>
-      <div class="addon-tags">${tagHtml}</div>
-    </div>
-    <div class="card-actions">
-      <button class="btn-icon pin ${isPinned ? 'pinned' : ''}" title="${isPinned ? 'Unpin' : 'Pin to top'}" data-url="${escHtml(url)}">📌</button>
-      ${isProtected
-        ? `<button class="btn-icon toggle-vis" title="Core addon cannot be disabled" disabled style="opacity:.3;cursor:not-allowed;pointer-events:none;">${iconPowerOn}</button>`
-        : `<button class="btn-icon toggle-vis ${isDisabled ? 'disabled-addon' : ''}" title="${isDisabled ? 'Enable addon' : 'Temporarily disable addon'}" data-url="${escHtml(url)}">${isDisabled ? iconPowerOff : iconPowerOn}</button>`
-      }
-      
-      <button class="btn-icon copy-url" title="Copy manifest URL" data-url="${escHtml(url)}">🔗</button>
-      ${isConfigurable ? `<button class="btn-icon config-addon" title="Configure addon" data-url="${escHtml(url)}">⚙️</button>` : ''}
-      
-      ${addonId.includes('cinemeta') ? `<button class="btn-icon cinemeta-config" title="Cinemeta Advanced Settings" data-url="${escHtml(url)}">🎛️</button>` : ''}
-      
-      ${isProtected
-        ? `<button class="btn-icon danger" title="Core addon cannot be removed" disabled style="opacity:.3;cursor:not-allowed;pointer-events:none;">🗑</button>`
-        : `<button class="btn-icon danger remove" title="Remove addon" data-url="${escHtml(url)}" data-name="${escHtml(name)}">🗑</button>`}
-    </div>`;
+  const iconPowerOn = svgFromStr('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>');
+  const iconPowerOff = svgFromStr('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1 2.5 8.04"/><path d="M20.66 20.66A9 9 0 0 1 5.64 5.64"/><line x1="12" y1="2" x2="12" y2="12"/><line x1="2" y1="2" x2="22" y2="22"/></svg>');
+
+  // ── Order badge ──
+  const orderBadge = document.createElement('span');
+  orderBadge.className = 'order-badge';
+  orderBadge.textContent = idx + 1;
+  card.appendChild(orderBadge);
+
+  // ── Drag handle (no user data — controlled innerHTML is safe) ──
+  const dragHandle = document.createElement('div');
+  dragHandle.className = 'drag-handle';
+  dragHandle.title = 'Drag to reorder';
+  dragHandle.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5"  r="2"/><circle cx="15" cy="5"  r="2"/><circle cx="9" cy="12" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="9" cy="19" r="2"/><circle cx="15" cy="19" r="2"/></svg>';
+  card.appendChild(dragHandle);
+
+  // ── Icon (user-controlled logo URL — built via DOM APIs) ──
+  const iconContainer = document.createElement('div');
+  iconContainer.className = 'addon-icon';
+  if (logo) {
+    const img = document.createElement('img');
+    img.src = logo;
+    img.alt = '';
+    img.loading = 'lazy';
+    img.addEventListener('error', function() {
+      iconContainer.textContent = '';
+      const placeholder = document.createElement('span');
+      placeholder.className = 'addon-icon-placeholder';
+      placeholder.textContent = '\u{1F50C}';
+      iconContainer.appendChild(placeholder);
+    });
+    iconContainer.appendChild(img);
+  } else {
+    const placeholder = document.createElement('span');
+    placeholder.className = 'addon-icon-placeholder';
+    placeholder.textContent = '\u{1F50C}';
+    iconContainer.appendChild(placeholder);
+  }
+  card.appendChild(iconContainer);
+
+  // ── Info section (user-controlled text — always via textContent) ──
+  const infoDiv = document.createElement('div');
+  infoDiv.className = 'addon-info';
+
+  const nameDiv = document.createElement('div');
+  nameDiv.className = 'addon-name';
+  nameDiv.textContent = name;
+
+  const versionSpan = document.createElement('span');
+  versionSpan.className = 'addon-version';
+  versionSpan.textContent = 'v' + (version || '');
+  nameDiv.appendChild(document.createTextNode(' '));
+  nameDiv.appendChild(versionSpan);
+
+  if (isPinned) {
+    const pinBadge = document.createElement('span');
+    pinBadge.title = 'Pinned';
+    pinBadge.style.cssText = 'color:var(--pin-color);font-size:.7rem';
+    pinBadge.textContent = '\u{1F4CC}';
+    nameDiv.appendChild(pinBadge);
+  }
+
+  if (isProtected) {
+    const lockBadge = document.createElement('span');
+    lockBadge.className = 'protected-lock';
+    lockBadge.title = 'Core addon cannot be removed';
+    lockBadge.textContent = '\u{1F512}';
+    nameDiv.appendChild(lockBadge);
+  }
+
+  if (health != null) {
+    const healthSpan = document.createElement('span');
+    healthSpan.className = health ? 'link-status-ok' : 'link-status-bad';
+    healthSpan.title = health ? 'Transport URL reachable' : 'Transport URL appears unavailable';
+    healthSpan.textContent = '\u25CF';
+    nameDiv.appendChild(healthSpan);
+  }
+
+  infoDiv.appendChild(nameDiv);
+
+  const descDiv = document.createElement('div');
+  descDiv.className = 'addon-desc';
+  descDiv.textContent = desc;
+  infoDiv.appendChild(descDiv);
+
+  // ── Tags (type names are from manifests — use textContent for safety) ──
+  const allRes = [...new Set([...types, ...res.map(r => typeof r === 'string' ? r : r.name || '')])];
+  const tagsDiv = document.createElement('div');
+  tagsDiv.className = 'addon-tags';
+  allRes.slice(0, 4).forEach(t => {
+    const tag = document.createElement('span');
+    tag.className = 'tag ' + tagClass(t);
+    tag.textContent = t;
+    tagsDiv.appendChild(tag);
+  });
+  infoDiv.appendChild(tagsDiv);
+
+  card.appendChild(infoDiv);
+
+  // ── Card actions ──
+  const actionsDiv = document.createElement('div');
+  actionsDiv.className = 'card-actions';
+
+  // Pin button
+  const pinBtn = document.createElement('button');
+  pinBtn.className = 'btn-icon pin' + (isPinned ? ' pinned' : '');
+  pinBtn.title = isPinned ? 'Unpin' : 'Pin to top';
+  pinBtn.dataset.url = url;
+  pinBtn.textContent = '\u{1F4CC}';
+  actionsDiv.appendChild(pinBtn);
+
+  // Toggle visibility button
+  if (isProtected) {
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'btn-icon toggle-vis';
+    toggleBtn.title = 'Core addon cannot be disabled';
+    toggleBtn.disabled = true;
+    toggleBtn.style.cssText = 'opacity:.3;cursor:not-allowed;pointer-events:none;';
+    toggleBtn.appendChild(iconPowerOn.cloneNode(true));
+    actionsDiv.appendChild(toggleBtn);
+  } else {
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'btn-icon toggle-vis' + (isDisabled ? ' disabled-addon' : '');
+    toggleBtn.title = isDisabled ? 'Enable addon' : 'Temporarily disable addon';
+    toggleBtn.dataset.url = url;
+    toggleBtn.appendChild((isDisabled ? iconPowerOff : iconPowerOn).cloneNode(true));
+    actionsDiv.appendChild(toggleBtn);
+  }
+
+  // Copy URL button
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'btn-icon copy-url';
+  copyBtn.title = 'Copy manifest URL';
+  copyBtn.dataset.url = url;
+  copyBtn.textContent = '\u{1F517}';
+  actionsDiv.appendChild(copyBtn);
+
+  // Configure button (if configurable)
+  if (isConfigurable) {
+    const configBtn = document.createElement('button');
+    configBtn.className = 'btn-icon config-addon';
+    configBtn.title = 'Configure addon';
+    configBtn.dataset.url = url;
+    configBtn.textContent = '\u2699\uFE0F';
+    actionsDiv.appendChild(configBtn);
+  }
+
+  // Cinemeta config button
+  if (addonId.includes('cinemeta')) {
+    const cinemetaBtn = document.createElement('button');
+    cinemetaBtn.className = 'btn-icon cinemeta-config';
+    cinemetaBtn.title = 'Cinemeta Advanced Settings';
+    cinemetaBtn.dataset.url = url;
+    cinemetaBtn.textContent = '\u{1F39B}\uFE0F';
+    actionsDiv.appendChild(cinemetaBtn);
+  }
+
+  // Remove button
+  if (isProtected) {
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'btn-icon danger';
+    removeBtn.title = 'Core addon cannot be removed';
+    removeBtn.disabled = true;
+    removeBtn.style.cssText = 'opacity:.3;cursor:not-allowed;pointer-events:none;';
+    removeBtn.textContent = '\u{1F5D1}';
+    actionsDiv.appendChild(removeBtn);
+  } else {
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'btn-icon danger remove';
+    removeBtn.title = 'Remove addon';
+    removeBtn.dataset.url = url;
+    removeBtn.dataset.name = name;
+    removeBtn.textContent = '\u{1F5D1}';
+    actionsDiv.appendChild(removeBtn);
+  }
+
+  card.appendChild(actionsDiv);
 
   // Standard movement & pinning listeners
   card.querySelector('.pin').addEventListener('click', e => { e.stopPropagation(); togglePin(url); });
@@ -1745,13 +1891,30 @@ $('btnRestoreBackup').addEventListener('click', () => {
   try {
     const parsed = JSON.parse($('backupImportText').value);
     if (!Array.isArray(parsed)) throw new Error('Root must be an array');
-    addons = parsed; 
-    renderList(); 
-    markChanged(); 
+    if (parsed.length > 500) throw new Error('Backup contains too many addons (max 500)');
+
+    // Validate each addon entry has basic structure
+    for (let i = 0; i < parsed.length; i++) {
+      const addon = parsed[i];
+      if (!addon || typeof addon !== 'object') {
+        throw new Error(`Invalid addon at index ${i}: not an object`);
+      }
+      const url = addon.transportUrl || (addon.manifest && addon.manifest.transportUrl);
+      if (!url || typeof url !== 'string') {
+        throw new Error(`Invalid addon at index ${i}: missing transportUrl`);
+      }
+      if (!/^https?:\/\//i.test(url)) {
+        throw new Error(`Invalid addon at index ${i}: transportUrl must be HTTP(S)`);
+      }
+    }
+
+    addons = parsed;
+    renderList();
+    markChanged();
     closeModal('backupModal');
     toast(`Restored ${addons.length} addon(s) — click Save to apply`, 'warning');
-  } catch (err) { 
-    toast(`Invalid JSON: ${err.message}`, 'error'); 
+  } catch (err) {
+    toast(`Invalid backup: ${err.message}`, 'error');
   }
 });
 
@@ -1876,6 +2039,9 @@ $('confirmCancel').addEventListener('click', () => { closeModal('confirmModal');
   if (typeof Sortable === 'undefined' || !Sortable.create) {
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js';
+    // TODO: Compute SRI hash for SortableJS 1.15.2 from cdn.jsdelivr.net
+    // s.integrity = 'sha384-COULD_NOT_COMPUTE_RUNTIME';
+    s.crossOrigin = 'anonymous';
     s.onload = () => { loadAddons(); };
     s.onerror = () => { window.Sortable = { create: () => ({ destroy: () => {} }) }; toast('Drag-and-drop failed to load. Please refresh the page.', 'error'); loadAddons(); };
     document.head.appendChild(s);

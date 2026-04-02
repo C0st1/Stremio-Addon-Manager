@@ -8,8 +8,12 @@ const { hitRateLimit } = require('../lib/rateLimiter');
 const { logEvent } = require('../lib/logger');
 const { setSessionCookie, clearSessionCookie } = require('../lib/auth');
 const { setAuthCors } = require('../lib/cors');
+const { getClientIp } = require('../lib/ip');
+const { sanitizeError } = require('../lib/errors');
+const { setSecurityHeaders } = require('../lib/securityHeaders');
 
 module.exports = async (req, res) => {
+  setSecurityHeaders(res);
   setAuthCors(req, res);
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
 
@@ -24,7 +28,7 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+  const ip = getClientIp(req);
   const limit = hitRateLimit(`login:${ip}`, { max: 10, windowMs: 60_000 });
   if (limit.limited) {
     await logEvent('warn', 'login_rate_limited', { ip });
@@ -39,12 +43,18 @@ module.exports = async (req, res) => {
     return;
   }
 
+  if (email.length > 254 || password.length > 128) {
+    res.status(400).json({ ok: false, error: 'Input too long' });
+    return;
+  }
+
   try {
     const authKey = await stremioAPI.cloudLogin(email, password);
     setSessionCookie(res, authKey);
     res.status(200).json({ ok: true });
   } catch (err) {
+    const safeErr = sanitizeError(err, 'login');
     await logEvent('error', 'login_failed', { ip, message: err.message });
-    res.status(401).json({ ok: false, error: err.message });
+    res.status(401).json({ ok: false, error: safeErr.message });
   }
 };

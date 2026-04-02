@@ -7,8 +7,11 @@
 
 const fs   = require('fs');
 const path = require('path');
+const { setSecurityHeaders } = require('../lib/securityHeaders');
 
 module.exports = (req, res) => {
+  setSecurityHeaders(res, 'html');
+
   const proto = req.headers['x-forwarded-proto'] || 'https';
   const host = req.headers['x-forwarded-host'] || req.headers.host;
   const fallbackUrl = `${proto}://${host}`;
@@ -19,7 +22,7 @@ module.exports = (req, res) => {
   try {
     html = fs.readFileSync(htmlPath, 'utf8');
   } catch (e) {
-    res.status(500).send('Could not read configure.html: ' + e.message);
+    res.status(500).send('Could not read configure.html');
     return;
   }
 
