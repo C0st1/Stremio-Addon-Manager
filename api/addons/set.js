@@ -13,6 +13,7 @@ const { logEvent } = require('../../lib/logger');
 const { getClientIp } = require('../../lib/ip');
 const { sanitizeError } = require('../../lib/errors');
 const { setSecurityHeaders } = require('../../lib/securityHeaders');
+const { sanitizeAddons } = require('../../lib/sanitizeAddons');
 const zlib = require('zlib');
 
 /**
@@ -104,15 +105,8 @@ module.exports = async (req, res) => {
   }
 
   // Sanitize addons: remove null/undefined manifest fields before forwarding to Stremio.
-  // Stremio's API rejects any addon where manifest is explicitly null with:
-  // "invalid type: null, expected struct Manifest"
-  const sanitized = addons.map(a => {
-    if (a.manifest === null || a.manifest === undefined) {
-      const { manifest, ...rest } = a;
-      return rest;
-    }
-    return a;
-  });
+  // Stremio's API rejects any addon where manifest is explicitly null.
+  const sanitized = sanitizeAddons(addons);
 
   // Sliding session renewal
   refreshSession(req, res);

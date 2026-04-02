@@ -11,6 +11,11 @@
 
 const { setSecurityHeaders } = require('../lib/securityHeaders');
 const { setPublicCors } = require('../lib/cors');
+const { hitRateLimit } = require('../lib/rateLimiter');
+const { getClientIp } = require('../lib/ip');
+
+// Block private/reserved IP ranges to prevent SSRF
+const BLOCKED_HOSTS = /^(localhost|127\.|10\.\d|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.|0\.|::1|\[::1\])/i;
 
 let getRecommendations, searchRecommendations;
 
@@ -178,8 +183,24 @@ module.exports = async (req, res) => {
 
       // Resolve manifest for a single addon (server-side, no CORS)
       if (transportUrl) {
-        if (typeof transportUrl !== 'string' || !/^https?:\/\//i.test(transportUrl)) {
-          res.status(400).json({ ok: false, error: 'Invalid transportUrl.' });
+        if (typeof transportUrl !== 'string' || !/^https:\/\/.+/i.test(transportUrl)) {
+          res.status(400).json({ ok: false, error: 'Invalid transportUrl. Must be HTTPS.' });
+          return;
+        }
+        try {
+          const urlObj = new URL(transportUrl);
+          if (BLOCKED_HOSTS.test(urlObj.hostname)) {
+            res.status(400).json({ ok: false, error: 'Private/internal URLs are not allowed.' });
+            return;
+          }
+        } catch {
+          res.status(400).json({ ok: false, error: 'Invalid URL.' });
+          return;
+        }
+        const ip = getClientIp(req);
+        const limit = hitRateLimit(`resolve:${ip}`, { max: 30, windowMs: 60_000 });
+        if (limit.limited) {
+          res.status(429).json({ ok: false, error: 'Rate limit exceeded.' });
           return;
         }
         try {

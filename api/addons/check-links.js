@@ -4,6 +4,7 @@ const { validateCsrfToken } = require('../../lib/csrf');
 const { setAuthCors } = require('../../lib/cors');
 const { cloudGetAddons } = require('../../lib/stremioAPI');
 const { hitRateLimit } = require('../../lib/rateLimiter');
+const { logEvent } = require('../../lib/logger');
 const { getClientIp } = require('../../lib/ip');
 const { setSecurityHeaders } = require('../../lib/securityHeaders');
 
@@ -93,6 +94,7 @@ module.exports = async (req, res) => {
 
     res.status(200).json({ ok: true, checks });
   } catch (err) {
+    await logEvent('error', 'check_links_failed', { ip, message: err.message });
     res.status(500).json({ ok: false, error: 'Health check failed. Please try again later.' });
   }
 };

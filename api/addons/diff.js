@@ -75,7 +75,7 @@ module.exports = async (req, res) => {
 
     res.status(200).json({ ok: true, ...diff });
   } catch (err) {
-    const safeErr = sanitizeError(err, 'addonGet');
+    const safeErr = sanitizeError(err, 'diff');
     await logEvent('error', 'diff_failed', { ip, message: err.message });
     res.status(500).json({ ok: false, error: safeErr.message });
   }

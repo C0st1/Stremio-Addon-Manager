@@ -1640,7 +1640,7 @@ $('authKeyInput').addEventListener('input', (e) => {
   if (val.length > 40) {
     authKeyTimeout = setTimeout(() => {
       bindSessionFromKey(val).then(() => { loggedIn = true; updateLoginUI(); return loadAddons(); }).catch(err => toast(err.message, 'error'));
-    }, 800); // Wait 600ms after they finish pasting/typing to prevent spamming
+    }, 800); // Debounce 800ms after the user stops typing
   } else if (val.length === 0) {
     // Optional: Clear the list if they delete the key
     addons = [];
@@ -1728,7 +1728,7 @@ $('btnLogout').addEventListener('click', async () => {
       credentials: 'include',
       body: JSON.stringify({ logout: true }),
     });
-  } catch {}
+  } catch (err) { console.warn('Logout failed:', err.message); }
   $('authKeyInput').value = '';
   loggedIn = false;
   addons = [];
@@ -1825,9 +1825,6 @@ $('btnDiscard').addEventListener('click', () => {
 
 /* ═══════════════════════════════════════════════════════════════════
    LOAD ADDONS
-═══════════════════════════════════════════════════════════════════ */
-/* ═══════════════════════════════════════════════════════════════════
-   LOAD ADDONS (OPTIMIZED DIRECT-TO-STREMIO)
 ═══════════════════════════════════════════════════════════════════ */
 async function loadAddons() {
   addonList.innerHTML = `<div class="status-panel">
@@ -2381,7 +2378,8 @@ $('btnDownloadBackup').addEventListener('click', () => {
   const a = document.createElement('a'); 
   a.href = URL.createObjectURL(new Blob([$('backupText').value], { type: 'application/json' })); 
   a.download = `stremio-addons.json`; 
-  a.click(); 
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   toast('Download started', 'success'); 
 });
 
@@ -2619,7 +2617,7 @@ const TRANSLATIONS = {
     restoreBackup: 'Restore from Backup',
     stream: 'Stream',
     catalog: 'Catalog',
-    subtitle: 'Subtitle',
+    typeSubtitle: 'Subtitle',
     other: 'Other',
     loading: 'Loading…',
     fetchingCloud: 'Fetching your addon collection from Cloud…',
@@ -2722,7 +2720,7 @@ const TRANSLATIONS = {
     restoreBackup: 'Restaurează din Backup',
     stream: 'Stream',
     catalog: 'Catalog',
-    subtitle: 'Subtitrare',
+    typeSubtitle: 'Subtitrare',
     other: 'Altul',
     loading: 'Se încarcă…',
     fetchingCloud: 'Se descarcă colecția de addon-uri din Cloud…',
@@ -3360,7 +3358,6 @@ $('btnDoImport').addEventListener('click', async () => {
 const healthHistory = JSON.parse(localStorage.getItem('addonHealthHistory') || '{}');
 let lastHealthCheckTime = parseInt(localStorage.getItem('lastHealthCheckTime') || '0');
 
-const originalRunBrokenLinkCheck = runBrokenLinkCheck;
 runBrokenLinkCheck = async function() {
   try {
     const res = await apiFetch('/api/addons/check-links', {});
@@ -3653,20 +3650,7 @@ applyTranslations();
 updateUndoRedoUI();
 
 
-(function loadSortable() {
-  if (typeof Sortable === 'undefined' || !Sortable.create) {
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js';
-    // TODO: Compute SRI hash for SortableJS 1.15.2 from cdn.jsdelivr.net
-    // s.integrity = 'sha384-COULD_NOT_COMPUTE_RUNTIME';
-    s.crossOrigin = 'anonymous';
-    s.onload = () => { loadAddons(); };
-    s.onerror = () => { window.Sortable = { create: () => ({ destroy: () => {} }) }; toast('Drag-and-drop failed to load. Please refresh the page.', 'error'); loadAddons(); };
-    document.head.appendChild(s);
-  } else {
-    loadAddons();
-  }
-})();
+loadAddons();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -3725,7 +3709,7 @@ function openCinemetaSettings(url) {
 
   // Only run detection when there's something to inspect (manifest has resources or catalogs)
   const hasManifestData = (manifest.resources && manifest.resources.length > 0) ||
-                          (manifest.catalogs && manifest.catalogs.length >= 0);
+                          (manifest.catalogs && manifest.catalogs.length > 0);
 
   if (hasManifestData) {
     const current = detectCinemetaPatches(manifest);
@@ -3841,8 +3825,7 @@ $('btnResetCinemeta').addEventListener('click', async () => {
       markChanged();
       
       // 4. Force the UI to show the Save Bar just in case deep-compare misses it
-      showSaveBar();
-      $('changesCount').textContent = "1+";
+      markChanged();
 
       toast('Cinemeta restored! Click Save & Apply.', 'success');
     } else {

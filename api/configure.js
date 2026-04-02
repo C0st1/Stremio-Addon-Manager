@@ -11,6 +11,9 @@ const { setSecurityHeaders, generateCspNonce } = require('../lib/securityHeaders
 const { generateCsrfToken } = require('../lib/csrf');
 
 module.exports = (req, res) => {
+  if (req.method === 'OPTIONS') { res.status(204).end(); return; }
+  if (req.method !== 'GET') { res.status(405).json({ ok: false, error: 'Method not allowed' }); return; }
+
   const nonce = generateCspNonce();
   setSecurityHeaders(res, 'html', { nonce });
 
